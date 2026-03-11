@@ -2,8 +2,9 @@
 .deploy-config
 .env
 
-# Dependencies
+# Dependencies & build output
 node_modules/
+dist/
 
 # Supabase local dev
 .supabase/
