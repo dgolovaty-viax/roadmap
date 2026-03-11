@@ -1,1 +1,11 @@
+# Local secrets — never commit
 .deploy-config
+.env
+
+# Dependencies
+node_modules/
+
+# Supabase local dev
+.supabase/
+supabase/.branches/
+supabase/.temp/
