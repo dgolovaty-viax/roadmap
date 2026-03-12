@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import VotingTab from '@/components/voting/VotingTab'
+import { supabase } from '@/lib/supabase'
 
 // ── Data model ─────────────────────────────────────────────────────────
 
@@ -34,20 +35,59 @@ function newEpic() {
   }
 }
 
-// ── Persistence (localStorage) ─────────────────────────────────────────
+// ── Persistence (Supabase) ─────────────────────────────────────────────
+
+// Map DB row (snake_case) → app object (camelCase)
+function rowToEpic(row) {
+  return {
+    id:            row.id,
+    title:         row.title,
+    owner:         row.owner,
+    status:        row.status,
+    targetQuarter: row.target_quarter,
+    sections:      row.sections || { why: '', customerValue: '', scope: '', risks: '', tech: '' },
+    createdAt:     row.created_at,
+    updatedAt:     row.updated_at,
+  }
+}
+
+// Map app object → DB row
+function epicToRow(epic) {
+  return {
+    id:             epic.id,
+    title:          epic.title,
+    owner:          epic.owner,
+    status:         epic.status,
+    target_quarter: epic.targetQuarter,
+    sections:       epic.sections,
+    updated_at:     new Date().toISOString(),
+  }
+}
 
 function useEpics() {
-  const [epics, setEpics] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('viax-epics') || '[]') }
-    catch { return [] }
-  })
+  const [epics,   setEpics]   = useState([])
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    localStorage.setItem('viax-epics', JSON.stringify(epics))
-  }, [epics])
+  const load = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('epics')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error) setEpics((data || []).map(rowToEpic))
+    setLoading(false)
+  }, [])
 
-  const upsert = (epic) => {
-    const saved = { ...epic, updatedAt: new Date().toISOString() }
+  useEffect(() => { load() }, [load])
+
+  const upsert = async (epic) => {
+    const row = epicToRow(epic)
+    const { data, error } = await supabase
+      .from('epics')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single()
+    if (error) { console.error('upsert error', error); return epic }
+    const saved = rowToEpic(data)
     setEpics(prev => {
       const idx = prev.findIndex(e => e.id === saved.id)
       return idx >= 0 ? prev.map(e => e.id === saved.id ? saved : e) : [saved, ...prev]
@@ -55,9 +95,12 @@ function useEpics() {
     return saved
   }
 
-  const remove = (id) => setEpics(prev => prev.filter(e => e.id !== id))
+  const remove = async (id) => {
+    await supabase.from('epics').delete().eq('id', id)
+    setEpics(prev => prev.filter(e => e.id !== id))
+  }
 
-  return { epics, upsert, remove }
+  return { epics, loading, upsert, remove }
 }
 
 // ── Shared styles ──────────────────────────────────────────────────────
@@ -146,7 +189,7 @@ function EpicCard({ epic, onClick }) {
 
 // ── EpicDetail (view + edit) ───────────────────────────────────────────
 
-function EpicDetail({ initial, isNew, onSave, onDelete, onBack }) {
+function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
   const [epic, setEpic] = useState(initial)
   const [editing, setEditing] = useState(isNew)
 
@@ -178,8 +221,8 @@ function EpicDetail({ initial, isNew, onSave, onDelete, onBack }) {
         <div style={{ display: 'flex', gap: 10 }}>
           {editing ? (
             <>
-              <button onClick={handleCancel} style={btn('#F0F0F0', '#555555', '#DDDDDD')}>Cancel</button>
-              <button onClick={handleSave}   style={btn('#4FD0A5', '#1E1E1E')}>Save</button>
+              <button onClick={handleCancel} disabled={saving} style={btn('#F0F0F0', '#555555', '#DDDDDD')}>Cancel</button>
+              <button onClick={handleSave}   disabled={saving} style={btn('#4FD0A5', '#1E1E1E')}>{saving ? 'Saving…' : 'Save'}</button>
             </>
           ) : (
             <>
@@ -263,11 +306,12 @@ function EpicDetail({ initial, isNew, onSave, onDelete, onBack }) {
 const TABS = ['Epics', 'Voting Sessions']
 
 export default function PlanningPage() {
-  const { epics, upsert, remove } = useEpics()
+  const { epics, loading, upsert, remove } = useEpics()
   const [tab, setTab]             = useState('Epics')
   const [selectedId, setSelectedId] = useState(null)
   const [isNew, setIsNew] = useState(false)
   const [draft, setDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
 
   const selected = draft || epics.find(e => e.id === selectedId) || null
 
@@ -284,15 +328,17 @@ export default function PlanningPage() {
     setIsNew(false)
   }
 
-  const handleSave = (epic) => {
-    const saved = upsert(epic)
+  const handleSave = async (epic) => {
+    setSaving(true)
+    const saved = await upsert(epic)
+    setSaving(false)
     setDraft(null)
     setSelectedId(saved.id)
     setIsNew(false)
   }
 
-  const handleDelete = (id) => {
-    remove(id)
+  const handleDelete = async (id) => {
+    await remove(id)
     setSelectedId(null)
     setDraft(null)
     setIsNew(false)
@@ -341,10 +387,13 @@ export default function PlanningPage() {
               key={selected.id}
               initial={selected}
               isNew={isNew}
+              saving={saving}
               onSave={handleSave}
               onDelete={handleDelete}
               onBack={handleBack}
             />
+          ) : loading ? (
+            <div style={{ textAlign: 'center', padding: '100px 0', color: '#AAAAAA', fontSize: 14 }}>Loading…</div>
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
