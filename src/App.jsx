@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Nav from '@/components/Nav'
 import RoadmapPage from '@/pages/RoadmapPage'
 import PlanningPage from '@/pages/PlanningPage'
+import SessionPage from '@/pages/SessionPage'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<RoadmapPage />} />
             <Route path="/planning" element={<PlanningPage />} />
+            <Route path="/planning/session/:sessionId" element={<SessionPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>

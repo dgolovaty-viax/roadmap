@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import VotingTab from '@/components/voting/VotingTab'
 
 // ── Data model ─────────────────────────────────────────────────────────
 
@@ -259,8 +260,11 @@ function EpicDetail({ initial, isNew, onSave, onDelete, onBack }) {
 
 // ── Planning Page ──────────────────────────────────────────────────────
 
+const TABS = ['Epics', 'Voting Sessions']
+
 export default function PlanningPage() {
   const { epics, upsert, remove } = useEpics()
+  const [tab, setTab]             = useState('Epics')
   const [selectedId, setSelectedId] = useState(null)
   const [isNew, setIsNew] = useState(false)
   const [draft, setDraft] = useState(null)
@@ -300,52 +304,77 @@ export default function PlanningPage() {
     setIsNew(false)
   }
 
+  // Tab bar (hidden when viewing an epic detail)
+  const TabBar = () => (
+    <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #E2E0DC', marginBottom: 36 }}>
+      {TABS.map(t => (
+        <button
+          key={t}
+          onClick={() => { setTab(t); handleBack() }}
+          style={{
+            background: 'none', border: 'none', padding: '10px 22px',
+            fontSize: 14, fontWeight: tab === t ? 700 : 400,
+            color: tab === t ? '#1E1E1E' : '#AAAAAA',
+            cursor: 'pointer', fontFamily: FONT,
+            borderBottom: tab === t ? '2px solid #4FD0A5' : '2px solid transparent',
+            marginBottom: -2,
+          }}
+        >{t}</button>
+      ))}
+    </div>
+  )
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 32px' }}>
 
-        {selected ? (
-          <EpicDetail
-            key={selected.id}
-            initial={selected}
-            isNew={isNew}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onBack={handleBack}
-          />
-        ) : (
-          <>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
-              <div>
-                <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Planning</h1>
+        {/* Page title */}
+        <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: '0 0 28px 0', letterSpacing: '-0.5px' }}>Planning</h1>
+
+        {/* Tab bar — hide when in epic detail */}
+        {!selected && <TabBar />}
+
+        {/* ── Epics tab ── */}
+        {tab === 'Epics' && (
+          selected ? (
+            <EpicDetail
+              key={selected.id}
+              initial={selected}
+              isNew={isNew}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onBack={handleBack}
+            />
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
                 <p style={{ fontSize: 13, color: '#AAAAAA', margin: 0 }}>
                   {epics.length === 0 ? 'No epics yet' : `${epics.length} epic${epics.length !== 1 ? 's' : ''}`}
                 </p>
+                <button onClick={handleNew} style={btn('#4FD0A5', '#1E1E1E')}>+ New Epic</button>
               </div>
-              <button onClick={handleNew} style={btn('#4FD0A5', '#1E1E1E')}>
-                + New Epic
-              </button>
-            </div>
 
-            {/* List */}
-            {epics.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                <div style={{ fontSize: 36, marginBottom: 14, color: '#DDDDDD' }}>◎</div>
-                <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>No epics yet. Create one to get started.</p>
-                <button onClick={handleNew} style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}>
-                  Create your first epic
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {epics.map(epic => (
-                  <EpicCard key={epic.id} epic={epic} onClick={() => handleSelect(epic)} />
-                ))}
-              </div>
-            )}
-          </>
+              {epics.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '100px 0' }}>
+                  <div style={{ fontSize: 36, marginBottom: 14, color: '#DDDDDD' }}>◎</div>
+                  <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>No epics yet. Create one to get started.</p>
+                  <button onClick={handleNew} style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}>
+                    Create your first epic
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {epics.map(epic => (
+                    <EpicCard key={epic.id} epic={epic} onClick={() => handleSelect(epic)} />
+                  ))}
+                </div>
+              )}
+            </>
+          )
         )}
+
+        {/* ── Voting Sessions tab ── */}
+        {tab === 'Voting Sessions' && <VotingTab epics={epics} />}
 
       </div>
     </div>
