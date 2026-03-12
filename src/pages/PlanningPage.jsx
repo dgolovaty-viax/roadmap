@@ -1,9 +1,5 @@
-import { useAuth } from '@/contexts/AuthContext'
-
 export default function PlanningPage() {
-  const { user } = useAuth()
-
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'
+  const displayName = 'team'
 
   return (
     <div className="min-h-screen bg-[#F8F7F6]">
