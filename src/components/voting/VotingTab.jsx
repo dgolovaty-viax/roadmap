@@ -149,7 +149,7 @@ function hasVotedAll(email, epicCount, allVotes, sessionId) {
   return allVotes.filter(v => v.session_id === sessionId && v.participant_email.toLowerCase() === email.toLowerCase()).length >= epicCount
 }
 
-function SessionRow({ session, allVotes, onClick }) {
+function SessionRow({ session, allVotes, onClick, onDelete }) {
   const [hovered, setHovered] = useState(false)
   const participants = session.participant_emails || []
   const epicCount    = session.session_epics?.length || 0
@@ -162,6 +162,13 @@ function SessionRow({ session, allVotes, onClick }) {
     : allVoted
     ? { background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5' }
     : { background: '#FFF8E6', color: '#996600', border: '1px solid #FFD966' }
+
+  const handleDelete = (e) => {
+    e.stopPropagation()
+    if (window.confirm(`Delete "${session.title}"? This will also delete all votes. This cannot be undone.`)) {
+      onDelete(session.id)
+    }
+  }
 
   return (
     <div
@@ -183,6 +190,12 @@ function SessionRow({ session, allVotes, onClick }) {
       <span style={{ ...badgeStyle, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', padding: '4px 10px', borderRadius: 4, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
         {isClosed ? 'Closed' : allVoted ? 'Complete' : 'Open'}
       </span>
+      {hovered && (
+        <button
+          onClick={handleDelete}
+          style={{ background: '#FFF0F0', border: '1px solid #FFCCCC', color: '#CC3333', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT, flexShrink: 0 }}
+        >Delete</button>
+      )}
     </div>
   )
 }
@@ -210,6 +223,11 @@ export default function VotingTab({ epics }) {
 
   const handleCreated = (session) => navigate(`/planning/session/${session.id}`)
 
+  const handleDelete = async (id) => {
+    await supabase.from('voting_sessions').delete().eq('id', id)
+    setSessions(prev => prev.filter(s => s.id !== id))
+  }
+
   if (loading) return <div style={{ padding: '60px 0', textAlign: 'center', color: '#AAAAAA', fontSize: 14 }}>Loading…</div>
 
   if (creating) return <CreateSessionForm epics={epics} onCreated={handleCreated} onCancel={() => setCreating(false)} />
@@ -235,7 +253,7 @@ export default function VotingTab({ epics }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sessions.map(s => (
-            <SessionRow key={s.id} session={s} allVotes={allVotes} onClick={() => navigate(`/planning/session/${s.id}`)} />
+            <SessionRow key={s.id} session={s} allVotes={allVotes} onClick={() => navigate(`/planning/session/${s.id}`)} onDelete={handleDelete} />
           ))}
         </div>
       )}
