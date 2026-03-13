@@ -14,10 +14,15 @@ CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "*"))
 
 # ── Clients ────────────────────────────────────────────────────────────
 
-supabase = create_client(
-    os.environ["SUPABASE_URL"],
-    os.environ["SUPABASE_KEY"],
-)
+_supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+_supabase_key = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY", "")
+
+if not _supabase_url or not _supabase_key:
+    import sys
+    print("ERROR: SUPABASE_URL and SUPABASE_KEY environment variables must be set", file=sys.stderr)
+    sys.exit(1)
+
+supabase = create_client(_supabase_url, _supabase_key)
 
 _anthropic_key = os.getenv("ANTHROPIC_API_KEY")
 anthropic = Anthropic(api_key=_anthropic_key) if _anthropic_key else None
