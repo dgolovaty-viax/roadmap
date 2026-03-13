@@ -14,8 +14,17 @@ CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "*"))
 
 # ── Clients ────────────────────────────────────────────────────────────
 
-_supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
-_supabase_key = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY", "")
+_supabase_url = (
+    os.environ.get("SUPABASE_URL") or
+    os.environ.get("VITE_SUPABASE_URL") or
+    os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+)
+_supabase_key = (
+    os.environ.get("SUPABASE_KEY") or
+    os.environ.get("VITE_SUPABASE_KEY") or
+    os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or
+    os.environ.get("SUPABASE_ANON_KEY", "")
+)
 
 if not _supabase_url or not _supabase_key:
     import sys
