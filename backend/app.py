@@ -18,7 +18,9 @@ supabase = create_client(
     os.environ["SUPABASE_URL"],
     os.environ["SUPABASE_KEY"],
 )
-anthropic = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+_anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+anthropic = Anthropic(api_key=_anthropic_key) if _anthropic_key else None
 
 
 def now():
@@ -139,6 +141,8 @@ def submit_votes():
 
 @app.route("/api/ai/generate-epic", methods=["POST"])
 def generate_epic():
+    if not anthropic:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
     body    = request.json
     title   = body.get("title", "")
     context = body.get("context", "")
@@ -177,6 +181,8 @@ Keep each section to 3-5 concise sentences. Be specific and actionable. Return o
 
 @app.route("/api/ai/suggest-wsjf", methods=["POST"])
 def suggest_wsjf():
+    if not anthropic:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
     body = request.json
     epic = body.get("epic", {})
 
