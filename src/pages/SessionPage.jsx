@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 const FIB  = [1, 2, 3, 5, 8, 13, 20]
@@ -83,16 +83,16 @@ export default function SessionPage() {
   const [submitDone,    setSubmitDone]    = useState(false)
 
   const loadData = useCallback(async () => {
-    const [s, se, v] = await Promise.all([
-      supabase.from('voting_sessions').select('*').eq('id', sessionId).single(),
-      supabase.from('session_epics').select('*').eq('session_id', sessionId).order('display_order'),
-      supabase.from('votes').select('*').eq('session_id', sessionId),
-    ])
-    if (s.error) { setError('Session not found.'); setLoading(false); return }
-    setSession(s.data)
-    setSessionEpics(se.data || [])
-    setVotes(v.data || [])
-    setLoading(false)
+    try {
+      const { session, epics, votes } = await api.sessions.get(sessionId)
+      setSession(session)
+      setSessionEpics(epics || [])
+      setVotes(votes || [])
+    } catch (e) {
+      setError('Session not found.')
+    } finally {
+      setLoading(false)
+    }
   }, [sessionId])
 
   useEffect(() => { loadData() }, [loadData])
@@ -139,27 +139,30 @@ export default function SessionPage() {
   const handleSubmit = async () => {
     if (!allSelected || submitting) return
     setSubmitting(true)
-    const rows = sessionEpics.map(e => ({
-      session_id:        sessionId,
-      session_epic_id:   e.id,
-      participant_email: normEmail,
-      business_value:    selections[e.id].bv,
-      time_criticality:  selections[e.id].tc,
-      risk_reduction:    selections[e.id].rr,
-      job_size:          selections[e.id].js,
-    }))
-    const { error: err } = await supabase
-      .from('votes')
-      .upsert(rows, { onConflict: 'session_epic_id,participant_email' })
-    setSubmitting(false)
-    if (err) { alert('Error submitting: ' + err.message); return }
-    localStorage.setItem('viax-voter-email', email.trim())
-    setSubmitDone(true)
-    await loadData()
+    try {
+      await api.votes.submit({
+        sessionId,
+        email: normEmail,
+        votes: sessionEpics.map(e => ({
+          sessionEpicId: e.id,
+          bv: selections[e.id].bv,
+          tc: selections[e.id].tc,
+          rr: selections[e.id].rr,
+          js: selections[e.id].js,
+        })),
+      })
+      localStorage.setItem('viax-voter-email', email.trim())
+      setSubmitDone(true)
+      await loadData()
+    } catch (err) {
+      alert('Error submitting votes: ' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleClose = async () => {
-    await supabase.from('voting_sessions').update({ status: 'closed' }).eq('id', sessionId)
+    await api.sessions.close(sessionId)
     await loadData()
   }
 

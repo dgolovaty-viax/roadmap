@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 
@@ -72,28 +72,17 @@ function CreateSessionForm({ epics, onCreated, onCancel }) {
 
     setLoading(true); setError(null)
 
-    const { data: session, error: e1 } = await supabase
-      .from('voting_sessions')
-      .insert({ title: title.trim(), status: 'open', participant_emails: emails })
-      .select().single()
-
-    if (e1) { setError(e1.message); setLoading(false); return }
-
-    const epicRows = epics
-      .filter(e => selectedIds.includes(e.id))
-      .map((epic, i) => ({
-        session_id:    session.id,
-        epic_id:       epic.id,
-        epic_title:    epic.title || 'Untitled Epic',
-        epic_summary:  (epic.sections?.why || '').slice(0, 280),
-        display_order: i,
-      }))
-
-    const { error: e2 } = await supabase.from('session_epics').insert(epicRows)
-    if (e2) { setError(e2.message); setLoading(false); return }
-
-    setLoading(false)
-    onCreated(session)
+    try {
+      const session = await api.sessions.create({
+        title:             title.trim(),
+        participantEmails: emails,
+        epics:             epics.filter(e => selectedIds.includes(e.id)),
+      })
+      onCreated(session)
+    } catch (e) {
+      setError(e.message || 'Failed to create session.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -210,13 +199,15 @@ export default function VotingTab({ epics }) {
   const navigate = useNavigate()
 
   const load = async () => {
-    const [s, v] = await Promise.all([
-      supabase.from('voting_sessions').select('*, session_epics(*)').order('created_at', { ascending: false }),
-      supabase.from('votes').select('session_id, participant_email, session_epic_id'),
-    ])
-    setSessions(s.data || [])
-    setAllVotes(v.data  || [])
-    setLoading(false)
+    try {
+      const { sessions, votes } = await api.sessions.list()
+      setSessions(sessions || [])
+      setAllVotes(votes    || [])
+    } catch (e) {
+      console.error('Failed to load sessions', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -224,7 +215,7 @@ export default function VotingTab({ epics }) {
   const handleCreated = (session) => navigate(`/planning/session/${session.id}`)
 
   const handleDelete = async (id) => {
-    await supabase.from('voting_sessions').delete().eq('id', id)
+    await api.sessions.delete(id)
     setSessions(prev => prev.filter(s => s.id !== id))
   }
 

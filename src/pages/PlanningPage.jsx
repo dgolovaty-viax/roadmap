@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import VotingTab from '@/components/voting/VotingTab'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 // ── Data model ─────────────────────────────────────────────────────────
 
@@ -22,6 +22,20 @@ const STATUS_STYLE = {
   'Done':        { background: '#F0F0F0', color: '#555555', border: '1px solid #AAAAAA' },
 }
 
+// Map API response (snake_case) → app object (camelCase)
+function rowToEpic(row) {
+  return {
+    id:            row.id,
+    title:         row.title,
+    owner:         row.owner,
+    status:        row.status,
+    targetQuarter: row.target_quarter ?? row.targetQuarter ?? '',
+    sections:      row.sections || { why: '', customerValue: '', scope: '', risks: '', tech: '' },
+    createdAt:     row.created_at ?? row.createdAt,
+    updatedAt:     row.updated_at ?? row.updatedAt,
+  }
+}
+
 function newEpic() {
   return {
     id: crypto.randomUUID(),
@@ -35,68 +49,42 @@ function newEpic() {
   }
 }
 
-// ── Persistence (Supabase) ─────────────────────────────────────────────
-
-// Map DB row (snake_case) → app object (camelCase)
-function rowToEpic(row) {
-  return {
-    id:            row.id,
-    title:         row.title,
-    owner:         row.owner,
-    status:        row.status,
-    targetQuarter: row.target_quarter,
-    sections:      row.sections || { why: '', customerValue: '', scope: '', risks: '', tech: '' },
-    createdAt:     row.created_at,
-    updatedAt:     row.updated_at,
-  }
-}
-
-// Map app object → DB row
-function epicToRow(epic) {
-  return {
-    id:             epic.id,
-    title:          epic.title,
-    owner:          epic.owner,
-    status:         epic.status,
-    target_quarter: epic.targetQuarter,
-    sections:       epic.sections,
-    updated_at:     new Date().toISOString(),
-  }
-}
+// ── Persistence (via Flask API) ────────────────────────────────────────
 
 function useEpics() {
   const [epics,   setEpics]   = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('epics')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (!error) setEpics((data || []).map(rowToEpic))
-    setLoading(false)
+    try {
+      const data = await api.epics.list()
+      setEpics((data || []).map(rowToEpic))
+    } catch (e) {
+      console.error('Failed to load epics', e)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { load() }, [load])
 
   const upsert = async (epic) => {
-    const row = epicToRow(epic)
-    const { data, error } = await supabase
-      .from('epics')
-      .upsert(row, { onConflict: 'id' })
-      .select()
-      .single()
-    if (error) { console.error('upsert error', error); return epic }
-    const saved = rowToEpic(data)
-    setEpics(prev => {
-      const idx = prev.findIndex(e => e.id === saved.id)
-      return idx >= 0 ? prev.map(e => e.id === saved.id ? saved : e) : [saved, ...prev]
-    })
-    return saved
+    try {
+      const saved = await api.epics.upsert(epic)
+      const mapped = rowToEpic(saved)
+      setEpics(prev => {
+        const idx = prev.findIndex(e => e.id === mapped.id)
+        return idx >= 0 ? prev.map(e => e.id === mapped.id ? mapped : e) : [mapped, ...prev]
+      })
+      return mapped
+    } catch (e) {
+      console.error('Failed to save epic', e)
+      return epic
+    }
   }
 
   const remove = async (id) => {
-    await supabase.from('epics').delete().eq('id', id)
+    await api.epics.delete(id)
     setEpics(prev => prev.filter(e => e.id !== id))
   }
 
@@ -190,8 +178,10 @@ function EpicCard({ epic, onClick }) {
 // ── EpicDetail (view + edit) ───────────────────────────────────────────
 
 function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
-  const [epic, setEpic] = useState(initial)
-  const [editing, setEditing] = useState(isNew)
+  const [epic,        setEpic]        = useState(initial)
+  const [editing,     setEditing]     = useState(isNew)
+  const [generating,  setGenerating]  = useState(false)
+  const [genError,    setGenError]    = useState(null)
 
   const set = (field, val) => setEpic(p => ({ ...p, [field]: val }))
   const setSection = (key, val) => setEpic(p => ({ ...p, sections: { ...p.sections, [key]: val } }))
@@ -211,6 +201,19 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
     if (window.confirm('Delete this epic? This cannot be undone.')) onDelete(epic.id)
   }
 
+  const handleGenerate = async () => {
+    if (!epic.title.trim()) { setGenError('Add a title first so AI has context.'); return }
+    setGenerating(true); setGenError(null)
+    try {
+      const { sections } = await api.ai.generateEpic(epic.title, '')
+      setEpic(p => ({ ...p, sections: { ...p.sections, ...sections } }))
+    } catch (e) {
+      setGenError('AI generation failed. Check that the backend is running.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   return (
     <div>
       {/* Top bar */}
@@ -221,8 +224,11 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
         <div style={{ display: 'flex', gap: 10 }}>
           {editing ? (
             <>
+              <button onClick={handleGenerate} disabled={generating || saving} style={btn('#F0F8FF', '#1a56db', '#93C5FD')}>
+                {generating ? '✦ Generating…' : '✦ Generate with AI'}
+              </button>
               <button onClick={handleCancel} disabled={saving} style={btn('#F0F0F0', '#555555', '#DDDDDD')}>Cancel</button>
-              <button onClick={handleSave}   disabled={saving} style={btn('#4FD0A5', '#1E1E1E')}>{saving ? 'Saving…' : 'Save'}</button>
+              <button onClick={handleSave}   disabled={saving || generating} style={btn('#4FD0A5', '#1E1E1E')}>{saving ? 'Saving…' : 'Save'}</button>
             </>
           ) : (
             <>
@@ -273,6 +279,13 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
           </>
         )}
       </div>
+
+      {/* AI error */}
+      {genError && (
+        <div style={{ background: '#FFF0F0', border: '1px solid #FFCCCC', borderRadius: 6, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#CC3333' }}>
+          {genError}
+        </div>
+      )}
 
       {/* Sections */}
       {SECTIONS.map((sec, i) => (
