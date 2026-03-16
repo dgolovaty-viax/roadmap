@@ -32,6 +32,7 @@ export const api = {
     get:    (id)         => request('GET',  `/api/sessions/${id}`),
     delete: (id)         => request('DELETE', `/api/sessions/${id}`),
     close:  (id)         => request('POST', `/api/sessions/${id}/close`),
+    revote: (id)         => request('POST', `/api/sessions/${id}/revote`),
   },
 
   // ── Votes ────────────────────────────────────────────────────────────

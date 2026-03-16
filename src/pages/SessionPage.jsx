@@ -22,16 +22,27 @@ function calcResults(sessionEpics, votes) {
   return sessionEpics
     .map(epic => {
       const ev = votes.filter(v => v.session_epic_id === epic.id)
-      if (!ev.length) return { ...epic, avgWsjf: 0, voterCount: 0, avgBV: 0, avgTC: 0, avgRR: 0, avgJS: 0 }
+      if (!ev.length) return { ...epic, avgWsjf: 0, voterCount: 0, avgBV: 0, avgTC: 0, avgRR: 0, avgJS: 0, voterRows: [] }
       const wsjfScores = ev.map(v => (v.business_value + v.time_criticality + v.risk_reduction) / v.job_size)
+      const meanWsjf   = wsjfScores.reduce((a, b) => a + b, 0) / wsjfScores.length
+      const stddev     = wsjfScores.length >= 3
+        ? Math.sqrt(wsjfScores.map(w => (w - meanWsjf) ** 2).reduce((a, b) => a + b, 0) / wsjfScores.length)
+        : 0
+      const voterRows = ev.map((v, i) => {
+        const wsjf     = +((v.business_value + v.time_criticality + v.risk_reduction) / v.job_size).toFixed(2)
+        const isOutlier = stddev > 0 && Math.abs(wsjf - meanWsjf) > stddev
+        return { ...v, wsjf, isOutlier }
+      })
       return {
         ...epic,
-        avgWsjf:  +(wsjfScores.reduce((a, b) => a + b, 0) / wsjfScores.length).toFixed(2),
-        avgBV:    +avg(ev.map(v => v.business_value)).toFixed(1),
-        avgTC:    +avg(ev.map(v => v.time_criticality)).toFixed(1),
-        avgRR:    +avg(ev.map(v => v.risk_reduction)).toFixed(1),
-        avgJS:    +avg(ev.map(v => v.job_size)).toFixed(1),
+        avgWsjf:    +(meanWsjf).toFixed(2),
+        avgBV:      +avg(ev.map(v => v.business_value)).toFixed(1),
+        avgTC:      +avg(ev.map(v => v.time_criticality)).toFixed(1),
+        avgRR:      +avg(ev.map(v => v.risk_reduction)).toFixed(1),
+        avgJS:      +avg(ev.map(v => v.job_size)).toFixed(1),
         voterCount: ev.length,
+        voterRows,
+        hasOutliers: voterRows.some(r => r.isOutlier),
       }
     })
     .sort((a, b) => b.avgWsjf - a.avgWsjf)
@@ -189,6 +200,11 @@ export default function SessionPage() {
   // Detail pane state
   const [detailEpic, setDetailEpic] = useState(null) // sessionEpic object being viewed
 
+  // Results breakdown state
+  const [expandedEpicId,  setExpandedEpicId]  = useState(null)  // which epic row is expanded
+  const [revoteConfirm,   setRevoteConfirm]   = useState(false) // show confirmation prompt
+  const [revoting,        setRevoting]        = useState(false)
+
   const loadData = useCallback(async () => {
     try {
       const [{ session, epics, votes }, allEpics] = await Promise.all([
@@ -280,6 +296,22 @@ export default function SessionPage() {
     await loadData()
   }
 
+  const handleRevote = async () => {
+    setRevoting(true)
+    try {
+      await api.sessions.revote(sessionId)
+      setRevoteConfirm(false)
+      setExpandedEpicId(null)
+      setSubmitDone(false)
+      setSelections({})
+      await loadData()
+    } catch (err) {
+      alert('Error resetting votes: ' + err.message)
+    } finally {
+      setRevoting(false)
+    }
+  }
+
   const toggleDetail = (epic) => {
     setDetailEpic(prev => prev?.id === epic.id ? null : epic)
   }
@@ -360,39 +392,139 @@ export default function SessionPage() {
         {/* Results */}
         {results && (
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8, padding: '24px', marginBottom: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1E1E1E', margin: '0 0 20px 0' }}>Results — Ranked by WSJF</h3>
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr', gap: 8, paddingBottom: 10, borderBottom: '2px solid #E2E0DC', marginBottom: 4 }}>
-                {['Epic', 'Avg BV', 'Avg TC', 'Avg RR/OE', 'Avg JS', 'WSJF ↓'].map(h => (
-                  <span key={h} style={{ fontSize: 11, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
-                ))}
-              </div>
-              {results.map((epic, i) => (
-                <div
-                  key={epic.id}
-                  style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr', gap: 8, padding: '13px 0', borderBottom: i < results.length - 1 ? '1px solid #F5F5F5' : 'none', alignItems: 'center' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? '#4FD0A5' : '#CCCCCC', minWidth: 22 }}>#{i + 1}</span>
+
+            {/* Results header + revote */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1E1E1E', margin: 0 }}>Results — Ranked by WSJF</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {results.some(r => r.hasOutliers) && !revoteConfirm && (
+                  <span style={{ fontSize: 11, color: '#BB6600', background: '#FFF3CD', border: '1px solid #FFD966', borderRadius: 4, padding: '3px 8px', fontWeight: 600 }}>
+                    ⚠ Outliers detected
+                  </span>
+                )}
+                {!revoteConfirm ? (
+                  <button
+                    onClick={() => setRevoteConfirm(true)}
+                    style={{ background: 'none', border: '1px solid #DDDDDD', color: '#666666', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT }}
+                  >↺ Request Revote</button>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#FFF8E6', border: '1px solid #FFD966', borderRadius: 6, padding: '8px 14px' }}>
+                    <span style={{ fontSize: 12, color: '#996600', fontWeight: 600 }}>Clear all votes and reopen?</span>
                     <button
-                      onClick={() => toggleDetail(epic)}
-                      style={{
-                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                        fontSize: 14, fontWeight: 500, color: detailEpic?.id === epic.id ? '#4FD0A5' : '#1E1E1E',
-                        textAlign: 'left', fontFamily: FONT, textDecoration: detailEpic?.id === epic.id ? 'underline' : 'none',
-                        textUnderlineOffset: 3,
-                      }}
-                      title="View epic details"
-                    >{epic.epic_title}</button>
+                      onClick={handleRevote}
+                      disabled={revoting}
+                      style={{ background: '#CC3333', color: '#FFFFFF', border: 'none', borderRadius: 5, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: revoting ? 'default' : 'pointer', fontFamily: FONT }}
+                    >{revoting ? 'Resetting…' : 'Yes, Revote'}</button>
+                    <button
+                      onClick={() => setRevoteConfirm(false)}
+                      style={{ background: 'none', border: 'none', color: '#888888', fontSize: 12, cursor: 'pointer', fontFamily: FONT, fontWeight: 600 }}
+                    >Cancel</button>
                   </div>
-                  <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgBV}</span>
-                  <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgTC}</span>
-                  <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgRR}</span>
-                  <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgJS}</span>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: i === 0 ? '#4FD0A5' : '#1E1E1E' }}>{epic.avgWsjf}</span>
-                </div>
+                )}
+              </div>
+            </div>
+
+            {/* Column headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: '28px 2fr 1fr 1fr 1fr 1fr 1.2fr 24px', gap: 8, paddingBottom: 10, borderBottom: '2px solid #E2E0DC', marginBottom: 4 }}>
+              {['', 'Epic', 'Avg BV', 'Avg TC', 'Avg RR/OE', 'Avg JS', 'WSJF ↓', ''].map((h, i) => (
+                <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
               ))}
             </div>
+
+            {results.map((epic, i) => {
+              const isExpanded = expandedEpicId === epic.id
+              return (
+                <div key={epic.id} style={{ borderBottom: i < results.length - 1 ? '1px solid #F5F5F5' : 'none' }}>
+
+                  {/* Summary row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '28px 2fr 1fr 1fr 1fr 1fr 1.2fr 24px', gap: 8, padding: '13px 0', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? '#4FD0A5' : '#CCCCCC' }}>#{i + 1}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <button
+                        onClick={() => toggleDetail(epic)}
+                        style={{
+                          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                          fontSize: 14, fontWeight: 500,
+                          color: detailEpic?.id === epic.id ? '#4FD0A5' : '#1E1E1E',
+                          textAlign: 'left', fontFamily: FONT,
+                          textDecoration: detailEpic?.id === epic.id ? 'underline' : 'none',
+                          textUnderlineOffset: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                        title="View full epic details"
+                      >{epic.epic_title}</button>
+                      {epic.hasOutliers && (
+                        <span title="Outlier votes detected — expand to review" style={{ fontSize: 13, cursor: 'default', flexShrink: 0 }}>⚠️</span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgBV}</span>
+                    <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgTC}</span>
+                    <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgRR}</span>
+                    <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgJS}</span>
+                    <span style={{ fontSize: 17, fontWeight: 700, color: i === 0 ? '#4FD0A5' : '#1E1E1E' }}>{epic.avgWsjf}</span>
+                    {/* Expand toggle */}
+                    <button
+                      onClick={() => setExpandedEpicId(isExpanded ? null : epic.id)}
+                      title={isExpanded ? 'Hide breakdown' : 'Show per-voter breakdown'}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        color: isExpanded ? '#4FD0A5' : '#CCCCCC', fontSize: 14, fontFamily: FONT,
+                        lineHeight: 1, fontWeight: 700,
+                      }}
+                    >{isExpanded ? '▲' : '▼'}</button>
+                  </div>
+
+                  {/* Per-voter breakdown */}
+                  {isExpanded && (
+                    <div style={{ margin: '0 0 14px 36px', background: '#F8F7F6', borderRadius: 8, overflow: 'hidden', border: '1px solid #EDEBE8' }}>
+                      {/* Breakdown header */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.3fr', gap: 8, padding: '8px 16px', background: '#EDEBE8' }}>
+                        {['Participant', 'BV', 'TC', 'RR/OE', 'JS', 'WSJF'].map(h => (
+                          <span key={h} style={{ fontSize: 10, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
+                        ))}
+                      </div>
+                      {/* Voter rows */}
+                      {epic.voterRows.map((v, vi) => (
+                        <div
+                          key={v.participant_email}
+                          style={{
+                            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.3fr', gap: 8,
+                            padding: '9px 16px',
+                            background: v.isOutlier ? '#FFF8E6' : (vi % 2 === 0 ? '#FFFFFF' : '#FAFAF9'),
+                            borderTop: vi > 0 ? '1px solid #EDEBE8' : 'none',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                            <span style={{ fontSize: 12, color: v.isOutlier ? '#996600' : '#555555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {v.participant_email}
+                            </span>
+                            {v.isOutlier && (
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#996600', background: '#FFD966', borderRadius: 3, padding: '1px 5px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Outlier
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 13, color: '#444444' }}>{v.business_value}</span>
+                          <span style={{ fontSize: 13, color: '#444444' }}>{v.time_criticality}</span>
+                          <span style={{ fontSize: 13, color: '#444444' }}>{v.risk_reduction}</span>
+                          <span style={{ fontSize: 13, color: '#444444' }}>{v.job_size}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: v.isOutlier ? '#BB6600' : '#4FD0A5' }}>{v.wsjf}</span>
+                        </div>
+                      ))}
+                      {/* Averages footer */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.3fr', gap: 8, padding: '8px 16px', background: '#EDEBE8', borderTop: '1px solid #DDDDDD' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Average</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#555555' }}>{epic.avgBV}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#555555' }}>{epic.avgTC}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#555555' }}>{epic.avgRR}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#555555' }}>{epic.avgJS}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#1E1E1E' }}>{epic.avgWsjf}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

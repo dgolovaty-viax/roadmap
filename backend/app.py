@@ -131,6 +131,14 @@ def close_session(session_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/sessions/<session_id>/revote", methods=["POST"])
+def revote_session(session_id):
+    # Clear all votes for the session and reopen it for another round
+    supabase.table("votes").delete().eq("session_id", session_id).execute()
+    supabase.table("voting_sessions").update({"status": "open"}).eq("id", session_id).execute()
+    return jsonify({"ok": True})
+
+
 # ── Votes ──────────────────────────────────────────────────────────────
 
 @app.route("/api/votes", methods=["POST"])
