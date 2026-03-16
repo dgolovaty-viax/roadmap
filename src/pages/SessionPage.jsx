@@ -63,6 +63,109 @@ function FibSelector({ label, value, onChange, disabled }) {
   )
 }
 
+// ── EpicDetailPane ─────────────────────────────────────────────────────
+
+const SECTION_DEFS = [
+  { key: 'why',           label: 'Why' },
+  { key: 'customerValue', label: 'Customer Value' },
+  { key: 'scope',         label: 'Scope' },
+  { key: 'risks',         label: 'Risks & Open Questions' },
+  { key: 'tech',          label: 'Tech Approach' },
+]
+
+function EpicDetailPane({ sessionEpic, fullEpic, onClose }) {
+  const sections = fullEpic?.sections || {}
+  const hasSections = SECTION_DEFS.some(({ key }) => sections[key])
+
+  return (
+    <div style={{
+      position: 'fixed', right: 0, top: 0, bottom: 0, width: 420,
+      background: '#FFFFFF',
+      boxShadow: '-4px 0 32px rgba(0,0,0,0.13)',
+      zIndex: 100,
+      display: 'flex', flexDirection: 'column',
+      fontFamily: FONT,
+    }}>
+      {/* Header */}
+      <div style={{
+        background: '#1E1E1E',
+        padding: '20px 24px',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        flexShrink: 0,
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#4FD0A5', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Epic Details
+          </div>
+          <h2 style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+            {sessionEpic.epic_title}
+          </h2>
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none', border: 'none', color: '#666666', cursor: 'pointer',
+            fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0,
+            fontFamily: FONT,
+          }}
+          title="Close"
+        >✕</button>
+      </div>
+
+      {/* Scrollable body */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+
+        {/* Summary callout */}
+        {sessionEpic.epic_summary && (
+          <div style={{
+            marginBottom: 28,
+            padding: '14px 16px',
+            background: '#F8F7F6',
+            borderRadius: 8,
+            borderLeft: '3px solid #4FD0A5',
+          }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#555555', lineHeight: 1.7 }}>
+              {sessionEpic.epic_summary}
+            </p>
+          </div>
+        )}
+
+        {/* Full sections */}
+        {hasSections
+          ? SECTION_DEFS.map(({ key, label }) =>
+              sections[key] ? (
+                <div key={key} style={{ marginBottom: 24 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: '#AAAAAA',
+                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
+                  }}>{label}</div>
+                  <p style={{ margin: 0, fontSize: 13, color: '#333333', lineHeight: 1.75 }}>
+                    {sections[key]}
+                  </p>
+                </div>
+              ) : null
+            )
+          : !fullEpic && (
+            <p style={{ fontSize: 13, color: '#AAAAAA', margin: 0 }}>
+              Full details not available.
+            </p>
+          )
+        }
+      </div>
+
+      {/* Footer hint */}
+      <div style={{
+        borderTop: '1px solid #F0F0F0',
+        padding: '12px 20px',
+        fontSize: 11, color: '#AAAAAA',
+        flexShrink: 0,
+      }}>
+        Click <strong style={{ color: '#777777' }}>ⓘ Details</strong> on any epic to switch the view.
+      </div>
+    </div>
+  )
+}
+
 // ── SessionPage ────────────────────────────────────────────────────────
 
 export default function SessionPage() {
@@ -74,20 +177,31 @@ export default function SessionPage() {
   const [votes,        setVotes]        = useState([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState(null)
+  const [epicDetailsMap, setEpicDetailsMap] = useState({}) // epic_id -> full epic
 
   // Voter state
-  const [email,         setEmail]         = useState(() => localStorage.getItem('viax-voter-email') || '')
-  const [emailLocked,   setEmailLocked]   = useState(false)
-  const [selections,    setSelections]    = useState({})
-  const [submitting,    setSubmitting]    = useState(false)
-  const [submitDone,    setSubmitDone]    = useState(false)
+  const [email,       setEmail]       = useState(() => localStorage.getItem('viax-voter-email') || '')
+  const [emailLocked, setEmailLocked] = useState(false)
+  const [selections,  setSelections]  = useState({})
+  const [submitting,  setSubmitting]  = useState(false)
+  const [submitDone,  setSubmitDone]  = useState(false)
+
+  // Detail pane state
+  const [detailEpic, setDetailEpic] = useState(null) // sessionEpic object being viewed
 
   const loadData = useCallback(async () => {
     try {
-      const { session, epics, votes } = await api.sessions.get(sessionId)
+      const [{ session, epics, votes }, allEpics] = await Promise.all([
+        api.sessions.get(sessionId),
+        api.epics.list(),
+      ])
       setSession(session)
       setSessionEpics(epics || [])
       setVotes(votes || [])
+      // Build map of epic_id -> full epic for the detail pane
+      const map = {}
+      for (const e of (allEpics || [])) map[e.id] = e
+      setEpicDetailsMap(map)
     } catch (e) {
       setError('Session not found.')
     } finally {
@@ -166,6 +280,10 @@ export default function SessionPage() {
     await loadData()
   }
 
+  const toggleDetail = (epic) => {
+    setDetailEpic(prev => prev?.id === epic.id ? null : epic)
+  }
+
   const results = showResults ? calcResults(sessionEpics, votes) : null
 
   const statusBadge = isClosed
@@ -174,9 +292,18 @@ export default function SessionPage() {
     ? { background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5', label: 'Complete' }
     : { background: '#FFF8E6', color: '#996600', border: '1px solid #FFD966', label: 'Open' }
 
+  // When detail pane is open, shift content right so it doesn't get obscured
+  const paneOpen = detailEpic !== null
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 32px' }}>
+      <div style={{
+        maxWidth: paneOpen ? 'none' : 880,
+        margin: '0 auto',
+        marginRight: paneOpen ? 440 : 'auto',
+        padding: '40px 32px',
+        transition: 'margin-right 0.25s ease, max-width 0.25s ease',
+      }}>
 
         {/* Back */}
         <button
@@ -235,7 +362,6 @@ export default function SessionPage() {
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8, padding: '24px', marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1E1E1E', margin: '0 0 20px 0' }}>Results — Ranked by WSJF</h3>
             <div>
-              {/* Column headers */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr', gap: 8, paddingBottom: 10, borderBottom: '2px solid #E2E0DC', marginBottom: 4 }}>
                 {['Epic', 'Avg BV', 'Avg TC', 'Avg RR/OE', 'Avg JS', 'WSJF ↓'].map(h => (
                   <span key={h} style={{ fontSize: 11, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
@@ -248,7 +374,16 @@ export default function SessionPage() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? '#4FD0A5' : '#CCCCCC', minWidth: 22 }}>#{i + 1}</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: '#1E1E1E' }}>{epic.epic_title}</span>
+                    <button
+                      onClick={() => toggleDetail(epic)}
+                      style={{
+                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        fontSize: 14, fontWeight: 500, color: detailEpic?.id === epic.id ? '#4FD0A5' : '#1E1E1E',
+                        textAlign: 'left', fontFamily: FONT, textDecoration: detailEpic?.id === epic.id ? 'underline' : 'none',
+                        textUnderlineOffset: 3,
+                      }}
+                      title="View epic details"
+                    >{epic.epic_title}</button>
                   </div>
                   <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgBV}</span>
                   <span style={{ fontSize: 14, color: '#555555' }}>{epic.avgTC}</span>
@@ -314,15 +449,48 @@ export default function SessionPage() {
                 </p>
 
                 {sessionEpics.map((epic, i) => {
-                  const sel   = selections[epic.id] || {}
-                  const wsjf  = wsjfPreview(epic.id)
+                  const sel        = selections[epic.id] || {}
+                  const wsjf       = wsjfPreview(epic.id)
+                  const isActive   = detailEpic?.id === epic.id
                   return (
                     <div key={epic.id} style={{ marginBottom: 28, paddingBottom: 28, borderBottom: i < sessionEpics.length - 1 ? '1px solid #F0F0F0' : 'none' }}>
-                      {/* Epic label */}
-                      <div style={{ background: '#1E1E1E', borderRadius: '6px 6px 0 0', padding: '10px 18px' }}>
-                        <span style={{ color: '#4FD0A5', fontSize: 11, fontWeight: 700, marginRight: 10 }}>0{i + 1}</span>
-                        <span style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 600 }}>{epic.epic_title}</span>
+                      {/* Epic title bar with Details button */}
+                      <div style={{
+                        background: '#1E1E1E',
+                        borderRadius: '6px 6px 0 0',
+                        padding: '10px 18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                          <span style={{ color: '#4FD0A5', fontSize: 11, fontWeight: 700, marginRight: 10, flexShrink: 0 }}>0{i + 1}</span>
+                          <span style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{epic.epic_title}</span>
+                        </div>
+                        <button
+                          onClick={() => toggleDetail(epic)}
+                          style={{
+                            background: 'none',
+                            border: `1px solid ${isActive ? '#4FD0A5' : '#444444'}`,
+                            color: isActive ? '#4FD0A5' : '#888888',
+                            borderRadius: 4,
+                            padding: '3px 10px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontFamily: FONT,
+                            flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title={isActive ? 'Close details' : 'View full epic details'}
+                        >
+                          ⓘ Details
+                        </button>
                       </div>
+
                       {epic.epic_summary ? (
                         <div style={{ border: '1px solid #E2E0DC', borderTop: 'none', borderRadius: '0 0 6px 6px', padding: '10px 18px', marginBottom: 16, fontSize: 13, color: '#888888', lineHeight: 1.65 }}>
                           {epic.epic_summary}
@@ -367,6 +535,15 @@ export default function SessionPage() {
         )}
 
       </div>
+
+      {/* Detail pane — fixed right overlay */}
+      {detailEpic && (
+        <EpicDetailPane
+          sessionEpic={detailEpic}
+          fullEpic={epicDetailsMap[detailEpic.epic_id]}
+          onClose={() => setDetailEpic(null)}
+        />
+      )}
     </div>
   )
 }
