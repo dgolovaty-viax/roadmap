@@ -1,5 +1,14 @@
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 
+const METRICS = [
+  { text: 'AI adoption across all team members', highlight: false },
+  { text: '"Unlocking value" reflected in platform & roadmap', highlight: false },
+  { text: 'Increase token efficiency over time', highlight: false },
+  { text: 'Improve task completion time for throughput', highlight: false },
+  { text: 'Reduce task completion to deployment window', highlight: true },
+  { text: 'Faster release cycles — monthly then on-demand', highlight: true },
+]
+
 const UNLOCKS = [
   'Agents that support the build out of end to end revenue motions',
   'Agents that participate in tasks in a revenue motion',
@@ -15,11 +24,10 @@ export default function NorthStarPage() {
       style={{
         minHeight: '100vh',
         background: '#F8F7F6',
-        paddingTop: 56,
         fontFamily: FONT,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
         padding: '120px 32px 80px',
       }}
     >
@@ -127,6 +135,63 @@ export default function NorthStarPage() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Metrics for Success */}
+        <div style={{ marginTop: 48 }}>
+          <h2
+            style={{
+              fontSize: 20,
+              fontWeight: 600,
+              color: '#1E1E1E',
+              margin: '0 0 20px 0',
+              letterSpacing: '-0.2px',
+            }}
+          >
+            Metrics for Success
+          </h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 12,
+            }}
+          >
+            {METRICS.map((metric, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 18px',
+                  background: '#1E1E1E',
+                  borderRadius: 8,
+                  border: metric.highlight ? '1px solid rgba(144,233,184,0.3)' : '1px solid #2A2A2A',
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#90E9B8',
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    color: metric.highlight ? '#90E9B8' : 'rgba(255,255,255,0.75)',
+                    fontWeight: metric.highlight ? 500 : 400,
+                  }}
+                >
+                  {metric.text}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
