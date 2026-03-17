@@ -31,8 +31,9 @@ export const api = {
     create: (data)       => request('POST', '/api/sessions', data),
     get:    (id)         => request('GET',  `/api/sessions/${id}`),
     delete: (id)         => request('DELETE', `/api/sessions/${id}`),
-    close:  (id)         => request('POST', `/api/sessions/${id}/close`),
-    revote: (id)         => request('POST', `/api/sessions/${id}/revote`),
+    close:          (id)         => request('POST', `/api/sessions/${id}/close`),
+    revote:         (id)         => request('POST', `/api/sessions/${id}/revote`),
+    addParticipant: (id, email)  => request('POST', `/api/sessions/${id}/add-participant`, { email }),
   },
 
   // ── Votes ────────────────────────────────────────────────────────────

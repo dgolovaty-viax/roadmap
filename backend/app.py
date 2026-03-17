@@ -139,6 +139,22 @@ def revote_session(session_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/sessions/<session_id>/add-participant", methods=["POST"])
+def add_participant(session_id):
+    data  = request.get_json()
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"ok": False, "error": "Email is required"}), 400
+    # Fetch current participant list
+    res = supabase.table("voting_sessions").select("participant_emails").eq("id", session_id).single().execute()
+    current = res.data.get("participant_emails") or []
+    if email in [e.lower() for e in current]:
+        return jsonify({"ok": False, "error": "Participant already in session"}), 409
+    updated = current + [email]
+    supabase.table("voting_sessions").update({"participant_emails": updated}).eq("id", session_id).execute()
+    return jsonify({"ok": True, "participant_emails": updated})
+
+
 # ── Votes ──────────────────────────────────────────────────────────────
 
 @app.route("/api/votes", methods=["POST"])

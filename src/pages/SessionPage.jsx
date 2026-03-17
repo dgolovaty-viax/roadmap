@@ -205,6 +205,12 @@ export default function SessionPage() {
   const [revoteConfirm,   setRevoteConfirm]   = useState(false) // show confirmation prompt
   const [revoting,        setRevoting]        = useState(false)
 
+  // Add participant state
+  const [addingParticipant, setAddingParticipant] = useState(false)
+  const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  const [addParticipantError, setAddParticipantError] = useState(null)
+  const [addingInProgress, setAddingInProgress] = useState(false)
+
   const loadData = useCallback(async () => {
     try {
       const [{ session, epics, votes }, allEpics] = await Promise.all([
@@ -312,6 +318,23 @@ export default function SessionPage() {
     }
   }
 
+  const handleAddParticipant = async () => {
+    const trimmed = newParticipantEmail.trim().toLowerCase()
+    if (!trimmed) return
+    setAddingInProgress(true)
+    setAddParticipantError(null)
+    try {
+      await api.sessions.addParticipant(sessionId, trimmed)
+      setNewParticipantEmail('')
+      setAddingParticipant(false)
+      await loadData()
+    } catch (err) {
+      setAddParticipantError(err.message.includes('409') ? 'Already in this session.' : 'Could not add participant.')
+    } finally {
+      setAddingInProgress(false)
+    }
+  }
+
   const toggleDetail = (epic) => {
     setDetailEpic(prev => prev?.id === epic.id ? null : epic)
   }
@@ -371,8 +394,17 @@ export default function SessionPage() {
         <div style={{ background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8, padding: '20px 24px', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1E1E1E', margin: 0 }}>Participants</h3>
-            <span style={{ fontSize: 13, color: '#AAAAAA' }}>{completedList.length} / {participants.length} voted</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, color: '#AAAAAA' }}>{completedList.length} / {participants.length} voted</span>
+              {!isClosed && !addingParticipant && (
+                <button
+                  onClick={() => { setAddingParticipant(true); setAddParticipantError(null) }}
+                  style={{ background: 'none', border: '1px solid #DDDDDD', color: '#555555', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT }}
+                >+ Add</button>
+              )}
+            </div>
           </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {participants.map(p => {
               const done = hasVotedAll(p, sessionEpics, votes)
@@ -387,6 +419,35 @@ export default function SessionPage() {
               )
             })}
           </div>
+
+          {/* Inline add-participant form */}
+          {addingParticipant && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F0F0F0' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="email"
+                  autoFocus
+                  value={newParticipantEmail}
+                  onChange={e => { setNewParticipantEmail(e.target.value); setAddParticipantError(null) }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddParticipant(); if (e.key === 'Escape') { setAddingParticipant(false); setNewParticipantEmail('') } }}
+                  placeholder="participant@viax.io"
+                  style={{ flex: 1, border: '1px solid #DDDDDD', borderRadius: 6, padding: '8px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
+                />
+                <button
+                  onClick={handleAddParticipant}
+                  disabled={!newParticipantEmail.trim() || addingInProgress}
+                  style={{ background: '#1E1E1E', color: '#FFFFFF', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: newParticipantEmail.trim() ? 'pointer' : 'default', fontFamily: FONT, opacity: newParticipantEmail.trim() ? 1 : 0.4 }}
+                >{addingInProgress ? 'Adding…' : 'Add'}</button>
+                <button
+                  onClick={() => { setAddingParticipant(false); setNewParticipantEmail(''); setAddParticipantError(null) }}
+                  style={{ background: 'none', border: 'none', color: '#AAAAAA', fontSize: 13, cursor: 'pointer', fontFamily: FONT, padding: '8px 4px' }}
+                >Cancel</button>
+              </div>
+              {addParticipantError && (
+                <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#CC3333' }}>{addParticipantError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Results */}
