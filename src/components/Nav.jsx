@@ -41,6 +41,9 @@ export default function Nav() {
         <NavLink to="/" end className={navLinkClass}>
           Roadmap
         </NavLink>
+        <NavLink to="/north-star" className={navLinkClass}>
+          North Star
+        </NavLink>
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>

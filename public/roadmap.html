@@ -834,14 +834,6 @@
   </div>
 </header>
 
-<!-- ── TAB BAR ── -->
-<nav id="tab-bar" style="background:#1E1E1E;border-bottom:1px solid #383838;display:flex;gap:0;padding:0 48px;">
-  <button class="tab-btn active" onclick="switchTab('roadmap')" id="tab-roadmap" style="background:none;border:none;border-bottom:2px solid #90E9B8;color:#FFFFFF;cursor:pointer;font-family:'Funnel Sans','Inter',system-ui,sans-serif;font-size:14px;font-weight:600;letter-spacing:0.01em;margin-bottom:-1px;padding:14px 20px;">Roadmap</button>
-  <button class="tab-btn" onclick="switchTab('north-star')" id="tab-north-star" style="background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,0.45);cursor:pointer;font-family:'Funnel Sans','Inter',system-ui,sans-serif;font-size:14px;font-weight:400;letter-spacing:0.01em;margin-bottom:-1px;padding:14px 20px;">North Star</button>
-</nav>
-
-<!-- ── ROADMAP CONTENT ── -->
-<div id="roadmap-content">
 <main>
 
   <!-- 2026.1 Release callout -->
@@ -1342,75 +1334,6 @@
     Owned by <strong>Dennis Golovaty</strong> · dgolovaty@viax.io
   </div>
 </footer>
-</div><!-- /roadmap-content -->
-
-<!-- ── NORTH STAR CONTENT ── -->
-<div id="north-star-content" style="display:none;min-height:calc(100vh - 160px);background:var(--cream);display:none;align-items:center;justify-content:center;padding:80px 48px;">
-  <div style="max-width:720px;width:100%;margin:0 auto;">
-    <div class="pillar-card" style="margin:0;">
-      <div class="pillar-header">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-          <span style="background:var(--green);color:#1E1E1E;font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:4px;">North Star</span>
-        </div>
-        <div class="pillar-title" style="font-size:26px;margin-bottom:0;">viax AI Server</div>
-      </div>
-      <div class="pillar-body">
-        <p style="font-size:15px;line-height:1.7;color:rgba(255,255,255,0.75);margin:0 0 24px 0;">
-          Enhance the viax platform to support the deployment and execution of AI agents powered by skills, tools, and context data that support:
-        </p>
-        <div class="unlocks">
-          <div class="unlocks-label">Unlocks</div>
-          <ul class="unlocks-items" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;">
-            <li class="unlocks-item">
-              <span class="unlocks-item-text">Agents that support the build out of end to end revenue motions</span>
-            </li>
-            <li class="unlocks-item">
-              <span class="unlocks-item-text">Agents that participate in tasks in a revenue motion</span>
-            </li>
-            <li class="unlocks-item">
-              <span class="unlocks-item-text">Agents that help build end user UIs based on revenue motion configuration</span>
-            </li>
-            <li class="unlocks-item">
-              <span class="unlocks-item-text">Agents that support the viax development process for higher throughput and stability</span>
-            </li>
-            <li class="unlocks-item">
-              <span class="unlocks-item-text">Agents that help execute support process</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function switchTab(tab) {
-  var roadmap   = document.getElementById('roadmap-content');
-  var northStar = document.getElementById('north-star-content');
-  var tabRoadmap   = document.getElementById('tab-roadmap');
-  var tabNorthStar = document.getElementById('tab-north-star');
-
-  if (tab === 'roadmap') {
-    roadmap.style.display   = 'block';
-    northStar.style.display = 'none';
-    tabRoadmap.style.borderBottomColor  = '#90E9B8';
-    tabRoadmap.style.color              = '#FFFFFF';
-    tabRoadmap.style.fontWeight         = '600';
-    tabNorthStar.style.borderBottomColor = 'transparent';
-    tabNorthStar.style.color             = 'rgba(255,255,255,0.45)';
-    tabNorthStar.style.fontWeight        = '400';
-  } else {
-    roadmap.style.display   = 'none';
-    northStar.style.display = 'flex';
-    tabNorthStar.style.borderBottomColor = '#90E9B8';
-    tabNorthStar.style.color             = '#FFFFFF';
-    tabNorthStar.style.fontWeight        = '600';
-    tabRoadmap.style.borderBottomColor  = 'transparent';
-    tabRoadmap.style.color              = 'rgba(255,255,255,0.45)';
-    tabRoadmap.style.fontWeight         = '400';
-  }
-}
-</script>
 
 </body>
 </html>
