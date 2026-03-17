@@ -38,9 +38,6 @@ export default function Nav() {
 
       {/* Nav links */}
       <div className="flex items-center gap-7">
-        <NavLink to="/" end className={navLinkClass}>
-          Roadmap
-        </NavLink>
         <NavLink to="/north-star" className={navLinkClass}>
           North Star
         </NavLink>

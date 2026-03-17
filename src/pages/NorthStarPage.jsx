@@ -6,6 +6,7 @@ const UNLOCKS = [
   'Agents that help build end user UIs based on revenue motion configuration',
   'Agents that support the viax development process for higher throughput and stability',
   'Agents that help execute support process',
+  'Agents that support the fast buildout of tailored engaging demos',
 ]
 
 export default function NorthStarPage() {
@@ -75,7 +76,9 @@ export default function NorthStarPage() {
               }}
             >
               Enhance the viax platform to support the deployment and execution of AI agents
-              powered by skills, tools, and context data that support:
+              powered by <strong style={{ color: '#FFFFFF' }}>skills</strong>,{' '}
+              <strong style={{ color: '#FFFFFF' }}>tools (MCP Server)</strong>, and{' '}
+              <strong style={{ color: '#FFFFFF' }}>context data brain (Nexus)</strong> that support:
             </p>
 
             {/* Unlocks section */}
