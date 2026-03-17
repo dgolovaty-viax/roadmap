@@ -76,7 +76,8 @@ export default function NorthStarPage() {
               }}
             >
               Enhance the viax platform to support the deployment and execution of AI agents
-              powered by <strong style={{ color: '#FFFFFF' }}>skills</strong>,{' '}
+              powered by <strong style={{ color: '#FFFFFF' }}>a simplified stable code base</strong>,{' '}
+              <strong style={{ color: '#FFFFFF' }}>skills</strong>,{' '}
               <strong style={{ color: '#FFFFFF' }}>tools (MCP Server)</strong>, and{' '}
               <strong style={{ color: '#FFFFFF' }}>context data brain (Nexus)</strong> that support:
             </p>
