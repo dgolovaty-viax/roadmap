@@ -16,6 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<RoadmapPage />} />
             <Route path="/planning" element={<PlanningPage />} />
+            <Route path="/planning/epics/:epicId" element={<PlanningPage />} />
             <Route path="/planning/session/:sessionId" element={<SessionPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import VotingTab from '@/components/voting/VotingTab'
 import { api } from '@/lib/api'
 
@@ -182,6 +183,15 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
   const [editing,     setEditing]     = useState(isNew)
   const [generating,  setGenerating]  = useState(false)
   const [genError,    setGenError]    = useState(null)
+  const [copied,      setCopied]      = useState(false)
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/planning/epics/${epic.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   const set = (field, val) => setEpic(p => ({ ...p, [field]: val }))
   const setSection = (key, val) => setEpic(p => ({ ...p, sections: { ...p.sections, [key]: val } }))
@@ -232,6 +242,9 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
             </>
           ) : (
             <>
+              <button onClick={handleCopyLink} style={btn(copied ? '#E8F9F3' : '#F3F3F3', copied ? '#1a7a5e' : '#555555', copied ? '#4FD0A5' : '#DDDDDD')}>
+                {copied ? '✓ Link copied' : '🔗 Copy link'}
+              </button>
               <button onClick={handleDelete} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Delete</button>
               <button onClick={() => setEditing(true)} style={btn('#1E1E1E', '#FFFFFF')}>Edit</button>
             </>
@@ -319,12 +332,22 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
 const TABS = ['Epics', 'Voting Sessions']
 
 export default function PlanningPage() {
+  const { epicId }                  = useParams()
+  const navigate                    = useNavigate()
   const { epics, loading, upsert, remove } = useEpics()
   const [tab, setTab]             = useState('Epics')
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(epicId || null)
   const [isNew, setIsNew] = useState(false)
   const [draft, setDraft] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  // When epics load and there's a URL epicId, select it
+  useEffect(() => {
+    if (epicId && epics.length > 0) {
+      setSelectedId(epicId)
+      setTab('Epics')
+    }
+  }, [epicId, epics.length])
 
   const selected = draft || epics.find(e => e.id === selectedId) || null
 
@@ -339,6 +362,7 @@ export default function PlanningPage() {
     setDraft(null)
     setSelectedId(epic.id)
     setIsNew(false)
+    navigate(`/planning/epics/${epic.id}`)
   }
 
   const handleSave = async (epic) => {
@@ -348,6 +372,7 @@ export default function PlanningPage() {
     setDraft(null)
     setSelectedId(saved.id)
     setIsNew(false)
+    navigate(`/planning/epics/${saved.id}`)
   }
 
   const handleDelete = async (id) => {
@@ -355,12 +380,14 @@ export default function PlanningPage() {
     setSelectedId(null)
     setDraft(null)
     setIsNew(false)
+    navigate('/planning')
   }
 
   const handleBack = () => {
     setSelectedId(null)
     setDraft(null)
     setIsNew(false)
+    navigate('/planning')
   }
 
   // Tab bar (hidden when viewing an epic detail)
