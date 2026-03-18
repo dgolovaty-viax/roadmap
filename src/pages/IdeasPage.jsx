@@ -525,7 +525,7 @@ export default function IdeasPage() {
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                   {filtered.map(idea => (
                     <IdeaCard key={idea.id} idea={idea} onClick={() => setSelectedId(idea.id)} />
                   ))}
