@@ -265,6 +265,60 @@ reasoning should be 2-3 sentences explaining the scores. Return only valid JSON.
     return jsonify(result)
 
 
+# ── Idea Tags ──────────────────────────────────────────────────────────
+
+@app.route("/api/idea-tags", methods=["GET"])
+def list_idea_tags():
+    res = supabase.table("idea_tags").select("*").order("name").execute()
+    return jsonify(res.data)
+
+
+@app.route("/api/idea-tags", methods=["POST"])
+def create_idea_tag():
+    body = request.json
+    name = (body.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    existing = supabase.table("idea_tags").select("*").eq("name", name).execute()
+    if existing.data:
+        return jsonify(existing.data[0]), 200
+    res = supabase.table("idea_tags").insert({
+        "id":   str(uuid.uuid4()),
+        "name": name,
+    }).execute()
+    return jsonify(res.data[0]), 201
+
+
+# ── Ideas ───────────────────────────────────────────────────────────────
+
+@app.route("/api/ideas", methods=["GET"])
+def list_ideas():
+    res = supabase.table("ideas").select("*, idea_tags(id, name)").order("created_at", desc=True).execute()
+    return jsonify(res.data)
+
+
+@app.route("/api/ideas", methods=["POST"])
+def upsert_idea():
+    body = request.json
+    row = {
+        "id":          body.get("id") or str(uuid.uuid4()),
+        "title":       body.get("title", ""),
+        "description": body.get("description", ""),
+        "tag_id":      body.get("tagId") or None,
+        "updated_at":  now(),
+    }
+    res = supabase.table("ideas").upsert(row, on_conflict="id").execute()
+    idea_id = (res.data[0] if res.data else row)["id"]
+    full = supabase.table("ideas").select("*, idea_tags(id, name)").eq("id", idea_id).single().execute()
+    return jsonify(full.data), 200
+
+
+@app.route("/api/ideas/<idea_id>", methods=["DELETE"])
+def delete_idea(idea_id):
+    supabase.table("ideas").delete().eq("id", idea_id).execute()
+    return jsonify({"ok": True})
+
+
 # ── Health ─────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])

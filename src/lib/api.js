@@ -24,6 +24,21 @@ export const api = {
     delete: (id)    => request('DELETE', `/api/epics/${id}`),
   },
 
+  // ── Ideas ───────────────────────────────────────────────────────────
+
+  ideas: {
+    list:   ()     => request('GET',    '/api/ideas'),
+    upsert: (idea) => request('POST',   '/api/ideas', idea),
+    delete: (id)   => request('DELETE', `/api/ideas/${id}`),
+  },
+
+  // ── Idea Tags ────────────────────────────────────────────────────────
+
+  ideaTags: {
+    list:   ()     => request('GET',  '/api/idea-tags'),
+    create: (name) => request('POST', '/api/idea-tags', { name }),
+  },
+
   // ── Sessions ────────────────────────────────────────────────────────
 
   sessions: {
