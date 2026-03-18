@@ -47,6 +47,9 @@ export default function Nav() {
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>
+        <NavLink to="/ideas" className={navLinkClass}>
+          Ideas
+        </NavLink>
       </div>
     </nav>
   )

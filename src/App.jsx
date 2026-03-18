@@ -4,6 +4,7 @@ import RoadmapPage from '@/pages/RoadmapPage'
 import NorthStarPage from '@/pages/NorthStarPage'
 import PlanningPage from '@/pages/PlanningPage'
 import SessionPage from '@/pages/SessionPage'
+import IdeasPage from '@/pages/IdeasPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/planning" element={<PlanningPage />} />
             <Route path="/planning/epics/:epicId" element={<PlanningPage />} />
             <Route path="/planning/session/:sessionId" element={<SessionPage />} />
+            <Route path="/ideas" element={<IdeasPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>
