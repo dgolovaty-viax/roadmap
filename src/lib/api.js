@@ -39,6 +39,18 @@ export const api = {
     create: (name) => request('POST', '/api/idea-tags', { name }),
   },
 
+  // ── Idea Vote Sessions ───────────────────────────────────────────────
+
+  ideaVoteSessions: {
+    list:   ()                       => request('GET',  '/api/idea-vote-sessions'),
+    create: ()                       => request('POST', '/api/idea-vote-sessions'),
+    get:    (id)                     => request('GET',  `/api/idea-vote-sessions/${id}`),
+    close:  (id)                     => request('POST', `/api/idea-vote-sessions/${id}/close`),
+    vote:   (id, email, ideaIds)     => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }),
+  },
+
+  promoteIdeas: (ideaIds) => request('POST', '/api/promote-ideas', { ideaIds }),
+
   // ── Sessions ────────────────────────────────────────────────────────
 
   sessions: {

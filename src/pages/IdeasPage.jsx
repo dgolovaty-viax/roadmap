@@ -24,7 +24,7 @@ function btn(bg, color, border) {
   return {
     background: bg, color, border: `1px solid ${border || bg}`,
     borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer', fontFamily: FONT, transition: 'opacity 0.15s',
+    cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s',
   }
 }
 
@@ -155,7 +155,11 @@ function useIdeas() {
     setIdeas(prev => prev.filter(i => i.id !== id))
   }
 
-  return { ideas, loading, upsert, remove }
+  const removeMany = (ids) => {
+    setIdeas(prev => prev.filter(i => !ids.includes(i.id)))
+  }
+
+  return { ideas, loading, upsert, remove, removeMany, reload: load }
 }
 
 function useTags() {
@@ -176,6 +180,290 @@ function useTags() {
   }
 
   return { tags, createTag }
+}
+
+function useVoteSession() {
+  const [session, setSession]         = useState(null)
+  const [votes, setVotes]             = useState([])
+  const [loadingSession, setLoadingSession] = useState(true)
+  const [showResults, setShowResults] = useState(false)
+
+  const loadLatest = useCallback(async () => {
+    try {
+      const sessions = await api.ideaVoteSessions.list()
+      const latest = (sessions || [])[0]
+      if (latest) {
+        const { votes: v } = await api.ideaVoteSessions.get(latest.id)
+        setSession(latest)
+        setVotes(v || [])
+        if (latest.status === 'closed') setShowResults(true)
+      }
+    } catch (e) {
+      console.error('Failed to load vote session', e)
+    } finally {
+      setLoadingSession(false)
+    }
+  }, [])
+
+  useEffect(() => { loadLatest() }, [loadLatest])
+
+  const startSession = async () => {
+    const s = await api.ideaVoteSessions.create()
+    setSession(s)
+    setVotes([])
+    setShowResults(false)
+    return s
+  }
+
+  const closeSession = async () => {
+    if (!session) return
+    await api.ideaVoteSessions.close(session.id)
+    setSession(p => ({ ...p, status: 'closed' }))
+    setShowResults(true)
+  }
+
+  const refreshVotes = useCallback(async () => {
+    if (!session) return
+    const { votes: v } = await api.ideaVoteSessions.get(session.id)
+    setVotes(v || [])
+  }, [session])
+
+  const dismissResults = () => {
+    setShowResults(false)
+    setSession(null)
+  }
+
+  return { session, votes, loadingSession, showResults, startSession, closeSession, refreshVotes, dismissResults }
+}
+
+// ── Voting Banner (admin, session open) ────────────────────────────────
+
+function VotingBanner({ session, votes, onCopyLink, onClose, onToggleParticipants, showParticipants, copied }) {
+  const voteUrl = `${window.location.origin}/ideas/vote/${session.id}`
+
+  return (
+    <div style={{
+      background: '#E8F9F3', border: '1px solid #4FD0A5', borderRadius: 8,
+      padding: '12px 18px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      {/* Pulse dot */}
+      <div style={{ position: 'relative', width: 10, height: 10, flexShrink: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#4FD0A5', opacity: 0.4, animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
+        <div style={{ position: 'relative', width: 10, height: 10, borderRadius: '50%', background: '#4FD0A5' }} />
+      </div>
+
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#1a7a5e' }}>Voting in progress</span>
+      <span style={{ fontSize: 13, color: '#1a7a5e', opacity: 0.7 }}>
+        {votes.length} {votes.length === 1 ? 'person has' : 'people have'} voted
+      </span>
+
+      {/* Vote link preview */}
+      <span style={{ fontSize: 12, color: '#1a7a5e', opacity: 0.6, fontFamily: 'monospace', background: 'rgba(79,208,165,0.15)', padding: '2px 8px', borderRadius: 4 }}>
+        {voteUrl.replace('https://', '')}
+      </span>
+
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          onClick={onCopyLink}
+          style={btn(copied ? '#4FD0A5' : '#FFFFFF', copied ? '#1E1E1E' : '#1a7a5e', copied ? '#4FD0A5' : '#4FD0A5')}
+        >
+          {copied ? '✓ Copied' : '🔗 Copy link'}
+        </button>
+        <button
+          onClick={onToggleParticipants}
+          style={btn(showParticipants ? '#1a7a5e' : '#FFFFFF', showParticipants ? '#FFFFFF' : '#1a7a5e', '#4FD0A5')}
+        >
+          {votes.length} votes {showParticipants ? '▲' : '▼'}
+        </button>
+        <button onClick={onClose} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Close vote</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Participant Panel ──────────────────────────────────────────────────
+
+function ParticipantPanel({ votes, onRefresh }) {
+  return (
+    <div style={{
+      background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8,
+      padding: '16px 20px', marginBottom: 16,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Participants ({votes.length})
+        </span>
+        <button
+          onClick={onRefresh}
+          style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: FONT, padding: 0 }}
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      {votes.length === 0 ? (
+        <p style={{ fontSize: 13, color: '#AAAAAA', margin: 0 }}>No votes yet. Share the link to get started.</p>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {votes.map(v => (
+            <span key={v.id} style={{
+              background: '#F3F3F3', border: '1px solid #E2E0DC',
+              borderRadius: 20, padding: '4px 12px', fontSize: 12, color: '#555555',
+            }}>
+              {v.email}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Results View ───────────────────────────────────────────────────────
+
+function ResultsView({ votes, ideas, onPromote, onDismiss }) {
+  const [selected, setSelected] = useState(new Set())
+  const [promoting, setPromoting] = useState(false)
+
+  // Tally votes per idea
+  const tally = {}
+  votes.forEach(v => {
+    const ids = Array.isArray(v.idea_ids) ? v.idea_ids : []
+    ids.forEach(id => { tally[id] = (tally[id] || 0) + 1 })
+  })
+
+  // Top 5 by vote count
+  const topIdeas = [...ideas]
+    .filter(i => tally[i.id] > 0)
+    .sort((a, b) => (tally[b.id] || 0) - (tally[a.id] || 0))
+    .slice(0, 5)
+
+  const toggle = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const handlePromote = async () => {
+    if (selected.size === 0 || promoting) return
+    setPromoting(true)
+    try {
+      await onPromote([...selected])
+    } finally {
+      setPromoting(false)
+    }
+  }
+
+  const rankColors = ['#4FD0A5', '#93C5FD', '#FFD966', '#AAAAAA', '#AAAAAA']
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1E1E1E', margin: '0 0 6px 0' }}>Voting Results</h2>
+          <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
+            {votes.length} {votes.length === 1 ? 'person' : 'people'} voted
+            {topIdeas.length > 0 ? ` · top ${topIdeas.length} idea${topIdeas.length !== 1 ? 's' : ''} shown` : ''}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onDismiss} style={btn('#F3F3F3', '#555555', '#DDDDDD')}>Back to Ideas</button>
+          <button
+            onClick={handlePromote}
+            disabled={selected.size === 0 || promoting}
+            style={{ ...btn('#4FD0A5', '#1E1E1E'), opacity: selected.size === 0 || promoting ? 0.5 : 1 }}
+          >
+            {promoting ? 'Moving…' : selected.size > 0 ? `Move ${selected.size} to Planning` : 'Move to Planning'}
+          </button>
+        </div>
+      </div>
+
+      {/* Instruction */}
+      {topIdeas.length > 0 && (
+        <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 16px 0' }}>
+          Select ideas below to move them to the Planning tab as epics.
+        </p>
+      )}
+
+      {/* Results list */}
+      {topIdeas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '80px 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+          <p style={{ fontSize: 15, color: '#AAAAAA' }}>No votes were cast in this session.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {topIdeas.map((idea, i) => {
+            const count = tally[idea.id] || 0
+            const tagName = idea.idea_tags?.name
+            const isSelected = selected.has(idea.id)
+
+            return (
+              <div
+                key={idea.id}
+                onClick={() => toggle(idea.id)}
+                style={{
+                  background: isSelected ? '#F0FFF8' : '#FFFFFF',
+                  border: `2px solid ${isSelected ? '#4FD0A5' : '#E2E0DC'}`,
+                  borderRadius: 8, padding: '18px 22px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 18,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {/* Rank badge */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  background: rankColors[i] || '#E2E0DC',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 800, color: '#1E1E1E',
+                }}>
+                  {i + 1}
+                </div>
+
+                {/* Idea info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
+                    {tagName && <TagBadge name={tagName} />}
+                  </div>
+                  {idea.description && (
+                    <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
+                      {idea.description.slice(0, 120)}{idea.description.length > 120 ? '…' : ''}
+                    </p>
+                  )}
+                </div>
+
+                {/* Vote count */}
+                <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#4FD0A5', lineHeight: 1 }}>
+                    {count}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>
+                    vote{count !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                {/* Checkbox */}
+                <div style={{
+                  width: 22, height: 22, flexShrink: 0,
+                  border: `2px solid ${isSelected ? '#4FD0A5' : '#DDDDDD'}`,
+                  borderRadius: 5, background: isSelected ? '#4FD0A5' : '#FFFFFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}>
+                  {isSelected && <span style={{ color: '#1E1E1E', fontSize: 13, fontWeight: 800 }}>✓</span>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
@@ -220,10 +508,10 @@ function IdeaCard({ idea, onClick }) {
 // ── CreateModal ────────────────────────────────────────────────────────
 
 function CreateModal({ tags, onCreateTag, onSave, onClose }) {
-  const [title, setTitle] = useState('')
+  const [title, setTitle]       = useState('')
   const [description, setDescription] = useState('')
-  const [tag, setTag] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [tag, setTag]           = useState(null)
+  const [saving, setSaving]     = useState(false)
 
   const handleSave = async () => {
     if (!title.trim() || saving) return
@@ -296,8 +584,8 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
 function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack }) {
-  const [idea, setIdea] = useState(initial)
-  const [tag, setTag] = useState(initial.idea_tags || null)
+  const [idea, setIdea]     = useState(initial)
+  const [tag, setTag]       = useState(initial.idea_tags || null)
   const [editing, setEditing] = useState(false)
 
   const handleSave = async () => {
@@ -331,7 +619,7 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
           {editing ? (
             <>
               <button onClick={handleCancel} disabled={saving} style={btn('#F0F0F0', '#555555', '#DDDDDD')}>Cancel</button>
-              <button onClick={handleSave} disabled={saving} style={btn('#4FD0A5', '#1E1E1E')}>{saving ? 'Saving…' : 'Save'}</button>
+              <button onClick={handleSave}   disabled={saving} style={btn('#4FD0A5', '#1E1E1E')}>{saving ? 'Saving…' : 'Save'}</button>
             </>
           ) : (
             <>
@@ -388,22 +676,10 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             onChange={e => setIdea(p => ({ ...p, description: e.target.value }))}
             rows={10}
             placeholder="Describe the idea in detail…"
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              border: '1px solid #E2E0DC', borderTop: 'none', borderRadius: '0 0 6px 6px',
-              padding: '14px 18px', fontSize: 14, lineHeight: 1.7,
-              color: '#1E1E1E', resize: 'vertical', fontFamily: FONT,
-              outline: 'none', background: '#FFFFFF',
-            }}
+            style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E2E0DC', borderTop: 'none', borderRadius: '0 0 6px 6px', padding: '14px 18px', fontSize: 14, lineHeight: 1.7, color: '#1E1E1E', resize: 'vertical', fontFamily: FONT, outline: 'none', background: '#FFFFFF' }}
           />
         ) : (
-          <div style={{
-            border: '1px solid #E2E0DC', borderTop: 'none', borderRadius: '0 0 6px 6px',
-            padding: '14px 18px', minHeight: 140, fontSize: 14, lineHeight: 1.75,
-            color: idea.description ? '#1E1E1E' : '#CCCCCC',
-            fontStyle: idea.description ? 'normal' : 'italic',
-            whiteSpace: 'pre-wrap', background: '#FFFFFF',
-          }}>
+          <div style={{ border: '1px solid #E2E0DC', borderTop: 'none', borderRadius: '0 0 6px 6px', padding: '14px 18px', minHeight: 140, fontSize: 14, lineHeight: 1.75, color: idea.description ? '#1E1E1E' : '#CCCCCC', fontStyle: idea.description ? 'normal' : 'italic', whiteSpace: 'pre-wrap', background: '#FFFFFF' }}>
             {idea.description || 'No description yet. Click Edit to add one.'}
           </div>
         )}
@@ -415,20 +691,54 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
 // ── Ideas Page ─────────────────────────────────────────────────────────
 
 export default function IdeasPage() {
-  const { ideas, loading, upsert, remove } = useIdeas()
-  const { tags, createTag } = useTags()
-  const [activeTag, setActiveTag] = useState(null)
-  const [selectedId, setSelectedId] = useState(null)
-  const [showCreate, setShowCreate] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const { ideas, loading, upsert, remove, removeMany } = useIdeas()
+  const { tags, createTag }                             = useTags()
+  const {
+    session, votes, loadingSession, showResults,
+    startSession, closeSession, refreshVotes, dismissResults,
+  } = useVoteSession()
+
+  const [activeTag, setActiveTag]           = useState(null)
+  const [selectedId, setSelectedId]         = useState(null)
+  const [showCreate, setShowCreate]         = useState(false)
+  const [showParticipants, setShowParticipants] = useState(false)
+  const [saving, setSaving]                 = useState(false)
+  const [copied, setCopied]                 = useState(false)
+  const [startingVote, setStartingVote]     = useState(false)
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
-  // Tags that are actually used by at least one idea
   const usedTagIds = [...new Set(ideas.map(i => i.tag_id).filter(Boolean))]
-  const usedTags = tags.filter(t => usedTagIds.includes(t.id))
+  const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
+  const filtered   = activeTag ? ideas.filter(i => i.tag_id === activeTag) : ideas
 
-  const filtered = activeTag ? ideas.filter(i => i.tag_id === activeTag) : ideas
+  // Auto-refresh votes every 20s when session is open
+  useEffect(() => {
+    if (!session || session.status !== 'open') return
+    const interval = setInterval(refreshVotes, 20000)
+    return () => clearInterval(interval)
+  }, [session, refreshVotes])
+
+  const handleCopyLink = () => {
+    if (!session) return
+    const url = `${window.location.origin}/ideas/vote/${session.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
+
+  const handleStartVoting = async () => {
+    setStartingVote(true)
+    try { await startSession() }
+    finally { setStartingVote(false) }
+  }
+
+  const handleCloseVote = () => {
+    if (window.confirm(`Close the voting session? ${votes.length === 0 ? 'No votes have been cast yet.' : `${votes.length} ${votes.length === 1 ? 'person has' : 'people have'} voted.`} Participants will no longer be able to submit votes.`)) {
+      closeSession()
+    }
+  }
 
   const handleSave = async (idea) => {
     setSaving(true)
@@ -446,12 +756,19 @@ export default function IdeasPage() {
     setSelectedId(null)
   }
 
+  const handlePromote = async (ideaIds) => {
+    await api.promoteIdeas(ideaIds)
+    removeMany(ideaIds)
+    dismissResults()
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 32px' }}>
 
         <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: '0 0 28px 0', letterSpacing: '-0.5px' }}>Ideas</h1>
 
+        {/* ── Detail view ── */}
         {selected ? (
           <IdeaDetail
             key={selected.id}
@@ -463,9 +780,38 @@ export default function IdeasPage() {
             onDelete={handleDelete}
             onBack={() => setSelectedId(null)}
           />
+
+        /* ── Results view (after vote closed) ── */
+        ) : showResults && session?.status === 'closed' ? (
+          <ResultsView
+            votes={votes}
+            ideas={ideas}
+            onPromote={handlePromote}
+            onDismiss={dismissResults}
+          />
+
+        /* ── Normal list view ── */
         ) : (
           <>
-            {/* Toolbar: tag filters + new button */}
+            {/* Voting banner */}
+            {session?.status === 'open' && (
+              <VotingBanner
+                session={session}
+                votes={votes}
+                onCopyLink={handleCopyLink}
+                onClose={handleCloseVote}
+                onToggleParticipants={() => setShowParticipants(p => !p)}
+                showParticipants={showParticipants}
+                copied={copied}
+              />
+            )}
+
+            {/* Participant list */}
+            {showParticipants && session?.status === 'open' && (
+              <ParticipantPanel votes={votes} onRefresh={refreshVotes} />
+            )}
+
+            {/* Toolbar: tag filters + action buttons */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
@@ -499,15 +845,29 @@ export default function IdeasPage() {
                 })}
               </div>
 
-              <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>+ New Idea</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!session && !loadingSession && (
+                  <button
+                    onClick={handleStartVoting}
+                    disabled={startingVote}
+                    style={{ ...btn('#1E1E1E', '#FFFFFF'), opacity: startingVote ? 0.6 : 1 }}
+                  >
+                    {startingVote ? 'Starting…' : '🗳 Start voting'}
+                  </button>
+                )}
+                <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>+ New Idea</button>
+              </div>
             </div>
 
             {/* Count */}
             <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 20px 0' }}>
-              {loading ? 'Loading…' : filtered.length === 0 ? (activeTag ? 'No ideas with this tag' : 'No ideas yet') : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`}
+              {loading ? 'Loading…' : filtered.length === 0
+                ? (activeTag ? 'No ideas with this tag' : 'No ideas yet')
+                : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
+              }
             </p>
 
-            {/* Card list */}
+            {/* Cards */}
             {!loading && (
               filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>

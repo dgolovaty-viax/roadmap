@@ -265,6 +265,90 @@ reasoning should be 2-3 sentences explaining the scores. Return only valid JSON.
     return jsonify(result)
 
 
+# ── Idea Vote Sessions ─────────────────────────────────────────────────
+
+@app.route("/api/idea-vote-sessions", methods=["GET"])
+def list_idea_vote_sessions():
+    res = supabase.table("idea_vote_sessions").select("*").order("created_at", desc=True).execute()
+    return jsonify(res.data)
+
+
+@app.route("/api/idea-vote-sessions", methods=["POST"])
+def create_idea_vote_session():
+    # Reuse any existing open session
+    existing = supabase.table("idea_vote_sessions").select("*").eq("status", "open").execute()
+    if existing.data:
+        return jsonify(existing.data[0]), 200
+    res = supabase.table("idea_vote_sessions").insert({
+        "id":     str(uuid.uuid4()),
+        "status": "open",
+    }).execute()
+    return jsonify(res.data[0]), 201
+
+
+@app.route("/api/idea-vote-sessions/<session_id>", methods=["GET"])
+def get_idea_vote_session(session_id):
+    session = supabase.table("idea_vote_sessions").select("*").eq("id", session_id).single().execute()
+    votes   = supabase.table("idea_votes").select("*").eq("session_id", session_id).execute()
+    return jsonify({"session": session.data, "votes": votes.data})
+
+
+@app.route("/api/idea-vote-sessions/<session_id>/close", methods=["POST"])
+def close_idea_vote_session(session_id):
+    supabase.table("idea_vote_sessions").update({"status": "closed"}).eq("id", session_id).execute()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/idea-vote-sessions/<session_id>/vote", methods=["POST"])
+def submit_idea_vote(session_id):
+    body     = request.json
+    email    = (body.get("email") or "").strip().lower()
+    idea_ids = body.get("ideaIds", [])
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    if len(idea_ids) > 5:
+        return jsonify({"error": "Maximum 5 ideas allowed"}), 400
+    sess = supabase.table("idea_vote_sessions").select("status").eq("id", session_id).single().execute()
+    if not sess.data or sess.data["status"] != "open":
+        return jsonify({"error": "This voting session is closed"}), 400
+    row = {"session_id": session_id, "email": email, "idea_ids": idea_ids}
+    res = supabase.table("idea_votes").upsert(row, on_conflict="session_id,email").execute()
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+# ── Promote ideas → epics ───────────────────────────────────────────────
+
+@app.route("/api/promote-ideas", methods=["POST"])
+def promote_ideas():
+    body     = request.json
+    idea_ids = body.get("ideaIds", [])
+    promoted = []
+    for idea_id in idea_ids:
+        idea_res = supabase.table("ideas").select("*, idea_tags(id, name)").eq("id", idea_id).single().execute()
+        if not idea_res.data:
+            continue
+        idea = idea_res.data
+        epic = {
+            "id":             str(uuid.uuid4()),
+            "title":          idea.get("title", ""),
+            "owner":          "",
+            "status":         "Draft",
+            "target_quarter": "",
+            "sections": {
+                "why":           idea.get("description", ""),
+                "customerValue": "",
+                "scope":         "",
+                "risks":         "",
+                "tech":          "",
+            },
+            "updated_at": now(),
+        }
+        supabase.table("epics").insert(epic).execute()
+        supabase.table("ideas").delete().eq("id", idea_id).execute()
+        promoted.append(epic["id"])
+    return jsonify({"ok": True, "promoted": promoted})
+
+
 # ── Idea Tags ──────────────────────────────────────────────────────────
 
 @app.route("/api/idea-tags", methods=["GET"])
