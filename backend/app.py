@@ -410,6 +410,16 @@ def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
 
+@app.route("/api/debug", methods=["GET"])
+def debug():
+    import traceback
+    try:
+        res = supabase.table("epics").select("id").limit(1).execute()
+        return jsonify({"db": "ok", "rows": len(res.data)})
+    except Exception as e:
+        return jsonify({"db": "error", "error": str(e), "trace": traceback.format_exc()}), 200
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
