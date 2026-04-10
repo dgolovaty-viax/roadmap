@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext, createContext, useMemo } from 'react'
 import { api } from '@/lib/api'
 
 // ── Shared constants ───────────────────────────────────────────────────
@@ -6,13 +6,22 @@ import { api } from '@/lib/api'
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 
 const TAG_PALETTE = [
-  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },
-  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },
-  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },
-  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },
-  { bg: '#FFF0F6', color: '#9D174D', border: '#FBCFE8' },
-  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
+  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },  // teal
+  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },  // blue
+  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },  // amber
+  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },  // purple
+  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },  // emerald
+  { bg: '#E0F2FE', color: '#0369A1', border: '#7DD3FC' },  // sky blue
+  { bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },  // yellow
+  { bg: '#F0FDF4', color: '#166534', border: '#86EFAC' },  // light green
+  { bg: '#F5F3FF', color: '#4C1D95', border: '#A78BFA' },  // deep purple
+  { bg: '#ECFEFF', color: '#164E63', border: '#67E8F9' },  // cyan
+  { bg: '#FFF7ED', color: '#9A3412', border: '#FDBA74' },  // orange
+  { bg: '#F0F9FF', color: '#1e3a5f', border: '#BAE6FD' },  // navy
 ]
+
+// Context that maps tag id → palette entry (set by IdeasPage, consumed by TagBadge)
+const TagColorContext = createContext({})
 
 function tagPalette(name) {
   let hash = 0
@@ -59,9 +68,10 @@ function normalizeTags(idea) {
 
 // ── TagBadge ───────────────────────────────────────────────────────────
 
-function TagBadge({ name, onRemove }) {
+function TagBadge({ id, name, onRemove }) {
   if (!name) return null
-  const { bg, color, border } = tagPalette(name)
+  const colorMap = useContext(TagColorContext)
+  const { bg, color, border } = (id && colorMap[id]) ? colorMap[id] : tagPalette(name)
   return (
     <span style={{
       background: bg, color, border: `1px solid ${border}`,
@@ -103,7 +113,7 @@ function MultiTagSelector({ selectedTags, allTags, onAdd, onRemove, onCreateAndA
       {selectedTags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
           {selectedTags.map(tag => (
-            <TagBadge key={tag.id} name={tag.name} onRemove={() => onRemove(tag)} />
+            <TagBadge key={tag.id} id={tag.id} name={tag.name} onRemove={() => onRemove(tag)} />
           ))}
         </div>
       )}
@@ -457,7 +467,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
-                    {ideaTags.map(t => <TagBadge key={t.id} name={t.name} />)}
+                    {ideaTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
                   </div>
                   {idea.description && (
                     <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
@@ -520,7 +530,7 @@ function IdeaCard({ idea, onClick }) {
         </h3>
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end', flexShrink: 0 }}>
-            {tags.map(t => <TagBadge key={t.id} name={t.name} />)}
+            {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
           </div>
         )}
       </div>
@@ -717,7 +727,7 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             </h2>
             {selectedTags.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {selectedTags.map(t => <TagBadge key={t.id} name={t.name} />)}
+                {selectedTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
               </div>
             ) : (
               <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tags</span>
@@ -772,6 +782,14 @@ export default function IdeasPage() {
 
   const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
+
+  // Assign each tag a unique color by its index in the sorted tags list
+  const tagColorMap = useMemo(() => {
+    const sorted = [...tags].sort((a, b) => a.name.localeCompare(b.name))
+    const map = {}
+    sorted.forEach((tag, i) => { map[tag.id] = TAG_PALETTE[i % TAG_PALETTE.length] })
+    return map
+  }, [tags])
   const filtered   = activeTags.size > 0
     ? ideas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
     : ideas
@@ -835,6 +853,7 @@ export default function IdeasPage() {
   }
 
   return (
+    <TagColorContext.Provider value={tagColorMap}>
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 32px' }}>
 
@@ -898,7 +917,7 @@ export default function IdeasPage() {
                 >All</button>
 
                 {usedTags.map(t => {
-                  const { bg, color, border } = tagPalette(t.name)
+                  const { bg, color, border } = tagColorMap[t.id] || tagPalette(t.name)
                   const isActive = activeTags.has(t.id)
                   return (
                     <button
@@ -977,5 +996,6 @@ export default function IdeasPage() {
         />
       )}
     </div>
+    </TagColorContext.Provider>
   )
 }
