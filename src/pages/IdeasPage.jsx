@@ -507,26 +507,44 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, onClick }) {
+function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const [hovered, setHovered] = useState(false)
   const tags = idea.tags || []
   const preview = (idea.description || '').trim().slice(0, 140)
 
   return (
     <div
+      draggable
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       style={{
-        background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8,
-        padding: '20px 24px', cursor: 'pointer',
-        boxShadow: hovered ? '0 2px 16px rgba(0,0,0,0.07)' : 'none',
-        transition: 'box-shadow 0.15s',
+        background: '#FFFFFF',
+        border: dragOver ? '2px solid #4FD0A5' : '1px solid #E2E0DC',
+        borderRadius: 8,
+        padding: dragOver ? '19px 23px' : '20px 24px',
+        cursor: dragging ? 'grabbing' : 'grab',
+        boxShadow: hovered && !dragging ? '0 2px 16px rgba(0,0,0,0.07)' : 'none',
+        opacity: dragging ? 0.35 : 1,
+        transition: 'box-shadow 0.15s, opacity 0.15s, border 0.1s',
+        userSelect: 'none',
       }}
     >
-      <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: '0 0 8px 0', lineHeight: 1.4 }}>
-        {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
-      </h3>
+      {/* drag handle + title row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+        <span style={{
+          fontSize: 14, color: hovered ? '#BBBBBB' : '#DDDDDD',
+          lineHeight: 1.4, flexShrink: 0, marginTop: 2,
+          transition: 'color 0.15s', cursor: 'grab',
+        }}>⠿</span>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
+          {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
+        </h3>
+      </div>
 
       {preview && (
         <p style={{ fontSize: 13, color: '#888888', margin: '0 0 14px 0', lineHeight: 1.65 }}>
@@ -778,6 +796,28 @@ export default function IdeasPage() {
   const [copied, setCopied]                 = useState(false)
   const [startingVote, setStartingVote]     = useState(false)
 
+  // Drag-to-rank state
+  const [order, setOrder]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ideas-order') || 'null') } catch { return null }
+  })
+  const [draggedId, setDraggedId]   = useState(null)
+  const [dragOverId, setDragOverId] = useState(null)
+
+  // Keep order in sync as ideas are added / removed
+  useEffect(() => {
+    if (ideas.length === 0) return
+    setOrder(prev => {
+      const base = prev || []
+      const existingIds = new Set(ideas.map(i => i.id))
+      // drop deleted ideas, append new ones at the end
+      const pruned  = base.filter(id => existingIds.has(id))
+      const newOnes = ideas.map(i => i.id).filter(id => !pruned.includes(id))
+      const next = [...pruned, ...newOnes]
+      localStorage.setItem('ideas-order', JSON.stringify(next))
+      return next
+    })
+  }, [ideas])
+
   const selected = ideas.find(i => i.id === selectedId) || null
 
   const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
@@ -801,6 +841,39 @@ export default function IdeasPage() {
       return next
     })
   }
+
+  // Apply saved order to the filtered list
+  const sortedFiltered = useMemo(() => {
+    if (!order) return filtered
+    return [...filtered].sort((a, b) => {
+      const ai = order.indexOf(a.id)
+      const bi = order.indexOf(b.id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+  }, [filtered, order])
+
+  function handleDragStart(id) { setDraggedId(id) }
+  function handleDragOver(e, id) { e.preventDefault(); if (id !== dragOverId) setDragOverId(id) }
+  function handleDrop(targetId) {
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return }
+    setOrder(prev => {
+      const base = prev || ideas.map(i => i.id)
+      const from = base.indexOf(draggedId)
+      const to   = base.indexOf(targetId)
+      if (from === -1 || to === -1) return prev
+      const next = [...base]
+      next.splice(from, 1)
+      next.splice(to, 0, draggedId)
+      localStorage.setItem('ideas-order', JSON.stringify(next))
+      return next
+    })
+    setDraggedId(null)
+    setDragOverId(null)
+  }
+  function handleDragEnd() { setDraggedId(null); setDragOverId(null) }
 
   // Auto-refresh votes every 20s when session is open
   useEffect(() => {
@@ -977,8 +1050,18 @@ export default function IdeasPage() {
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                  {filtered.map(idea => (
-                    <IdeaCard key={idea.id} idea={idea} onClick={() => setSelectedId(idea.id)} />
+                  {sortedFiltered.map(idea => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      onClick={() => !draggedId && setSelectedId(idea.id)}
+                      dragging={draggedId === idea.id}
+                      dragOver={dragOverId === idea.id && draggedId !== idea.id}
+                      onDragStart={() => handleDragStart(idea.id)}
+                      onDragOver={e => handleDragOver(e, idea.id)}
+                      onDrop={() => handleDrop(idea.id)}
+                      onDragEnd={handleDragEnd}
+                    />
                   ))}
                 </div>
               )
