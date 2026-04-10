@@ -66,6 +66,47 @@ function normalizeTags(idea) {
   return assignments.map(a => a.idea_tags).filter(Boolean)
 }
 
+// ── Duplicate detection ────────────────────────────────────────────────
+
+const STOP = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with',
+  'by','from','is','are','was','were','be','been','have','has','had','do','does','did',
+  'will','would','could','should','may','might','must','can','it','its','this','that',
+  'we','our','you','your','they','their','i','my','how','what','when','where','why','which'])
+
+function keyWords(text) {
+  return new Set(
+    (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+      .filter(w => w.length > 2 && !STOP.has(w))
+  )
+}
+
+function jaccard(a, b) {
+  if (!a.size && !b.size) return 0
+  const inter = [...a].filter(x => b.has(x)).length
+  return inter / (a.size + b.size - inter)
+}
+
+// Returns a Set of idea IDs that have at least one likely duplicate
+function findDuplicateIds(ideas) {
+  const ids = new Set()
+  for (let i = 0; i < ideas.length; i++) {
+    for (let j = i + 1; j < ideas.length; j++) {
+      const a = ideas[i], b = ideas[j]
+      const tA = (a.title || '').toLowerCase().trim()
+      const tB = (b.title || '').toLowerCase().trim()
+      // Exact title match always flags
+      if (tA && tA === tB) { ids.add(a.id); ids.add(b.id); continue }
+      // Jaccard similarity across title + description words
+      const sim = jaccard(
+        keyWords((a.title || '') + ' ' + (a.description || '')),
+        keyWords((b.title || '') + ' ' + (b.description || ''))
+      )
+      if (sim >= 0.4) { ids.add(a.id); ids.add(b.id) }
+    }
+  }
+  return ids
+}
+
 // ── TagBadge ───────────────────────────────────────────────────────────
 
 function TagBadge({ id, name, onRemove }) {
@@ -506,7 +547,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const [hovered, setHovered] = useState(false)
   const tags = idea.tags || []
   const preview = (idea.description || '').trim().slice(0, 140)
@@ -523,7 +564,7 @@ function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, 
       onDragEnd={onDragEnd}
       style={{
         background: '#FFFFFF',
-        border: dragOver ? '2px solid #4FD0A5' : '1px solid #E2E0DC',
+        border: dragOver ? '2px solid #4FD0A5' : isDuplicate ? '1px solid #FFD966' : '1px solid #E2E0DC',
         borderRadius: 8,
         padding: dragOver ? '19px 23px' : '20px 24px',
         cursor: dragging ? 'grabbing' : 'grab',
@@ -544,9 +585,21 @@ function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, 
             lineHeight: 1.4, flexShrink: 0, marginTop: 2,
             transition: 'color 0.15s', cursor: 'grab',
           }}>⠿</span>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' }}>
-            {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
-          </h3>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {isDuplicate && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: '#FFF8E6', color: '#996600', border: '1px solid #FFD966',
+                borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 5,
+              }}>
+                ⚠ Possible duplicate
+              </div>
+            )}
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
+            </h3>
+          </div>
         </div>
 
         {preview && (
@@ -824,6 +877,9 @@ export default function IdeasPage() {
   const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
 
+  // Potential duplicates — computed once per ideas change
+  const duplicateIds = useMemo(() => findDuplicateIds(ideas), [ideas])
+
   // Assign each tag a unique color by its index in the sorted tags list
   const tagColorMap = useMemo(() => {
     const sorted = [...tags].sort((a, b) => a.name.localeCompare(b.name))
@@ -1096,6 +1152,7 @@ export default function IdeasPage() {
                       onClick={() => !draggedId && setSelectedId(idea.id)}
                       dragging={draggedId === idea.id}
                       dragOver={dragOverId === idea.id && draggedId !== idea.id}
+                      isDuplicate={duplicateIds.has(idea.id)}
                       onDragStart={() => handleDragStart(idea.id)}
                       onDragOver={e => handleDragOver(e, idea.id)}
                       onDrop={() => handleDrop(idea.id)}
