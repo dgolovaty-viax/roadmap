@@ -235,7 +235,6 @@ function useVoteSession() {
         const { votes: v } = await api.ideaVoteSessions.get(latest.id)
         setSession(latest)
         setVotes(v || [])
-        if (latest.status === 'closed') setShowResults(true)
       }
     } catch (e) {
       console.error('Failed to load vote session', e)
