@@ -760,7 +760,7 @@ export default function IdeasPage() {
     startSession, closeSession, refreshVotes, dismissResults,
   } = useVoteSession()
 
-  const [activeTag, setActiveTag]           = useState(null)
+  const [activeTags, setActiveTags]         = useState(new Set())
   const [selectedId, setSelectedId]         = useState(null)
   const [showCreate, setShowCreate]         = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
@@ -772,7 +772,17 @@ export default function IdeasPage() {
 
   const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
-  const filtered   = activeTag ? ideas.filter(i => (i.tags || []).some(t => t.id === activeTag)) : ideas
+  const filtered   = activeTags.size > 0
+    ? ideas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
+    : ideas
+
+  function toggleTag(id) {
+    setActiveTags(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   // Auto-refresh votes every 20s when session is open
   useEffect(() => {
@@ -877,11 +887,11 @@ export default function IdeasPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
-                  onClick={() => setActiveTag(null)}
+                  onClick={() => setActiveTags(new Set())}
                   style={{
-                    background: activeTag === null ? '#1E1E1E' : '#FFFFFF',
-                    color: activeTag === null ? '#FFFFFF' : '#555555',
-                    border: `1px solid ${activeTag === null ? '#1E1E1E' : '#E2E0DC'}`,
+                    background: activeTags.size === 0 ? '#1E1E1E' : '#FFFFFF',
+                    color: activeTags.size === 0 ? '#FFFFFF' : '#555555',
+                    border: `1px solid ${activeTags.size === 0 ? '#1E1E1E' : '#E2E0DC'}`,
                     borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s',
                   }}
@@ -889,11 +899,11 @@ export default function IdeasPage() {
 
                 {usedTags.map(t => {
                   const { bg, color, border } = tagPalette(t.name)
-                  const isActive = activeTag === t.id
+                  const isActive = activeTags.has(t.id)
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setActiveTag(isActive ? null : t.id)}
+                      onClick={() => toggleTag(t.id)}
                       style={{
                         background: isActive ? '#1E1E1E' : bg,
                         color: isActive ? '#FFFFFF' : color,
@@ -924,7 +934,7 @@ export default function IdeasPage() {
             {/* Count */}
             <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 20px 0' }}>
               {loading ? 'Loading…' : filtered.length === 0
-                ? (activeTag ? 'No ideas with this tag' : 'No ideas yet')
+                ? (activeTags.size > 0 ? 'No ideas match the selected tags' : 'No ideas yet')
                 : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
               }
             </p>
@@ -935,9 +945,9 @@ export default function IdeasPage() {
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 14 }}>💡</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>
-                    {activeTag ? 'No ideas with this tag.' : 'No ideas yet. Add the first one.'}
+                    {activeTags.size > 0 ? 'No ideas match the selected tags.' : 'No ideas yet. Add the first one.'}
                   </p>
-                  {!activeTag && (
+                  {activeTags.size === 0 && (
                     <button
                       onClick={() => setShowCreate(true)}
                       style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}
