@@ -69,8 +69,8 @@ function normalizeTags(idea) {
 // ── TagBadge ───────────────────────────────────────────────────────────
 
 function TagBadge({ id, name, onRemove }) {
-  if (!name) return null
   const colorMap = useContext(TagColorContext)
+  if (!name) return null
   const { bg, color, border } = (id && colorMap[id]) ? colorMap[id] : tagPalette(name)
   return (
     <span style={{
