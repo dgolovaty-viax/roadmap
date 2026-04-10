@@ -524,25 +524,25 @@ function IdeaCard({ idea, onClick }) {
         transition: 'box-shadow 0.15s',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: (tags.length > 0 || preview) ? 8 : 0 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
-          {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
-        </h3>
-        {tags.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end', flexShrink: 0 }}>
-            {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
-          </div>
-        )}
-      </div>
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: '0 0 8px 0', lineHeight: 1.4 }}>
+        {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
+      </h3>
 
       {preview && (
-        <p style={{ fontSize: 13, color: '#888888', margin: '8px 0 14px 0', lineHeight: 1.65 }}>
+        <p style={{ fontSize: 13, color: '#888888', margin: '0 0 14px 0', lineHeight: 1.65 }}>
           {preview}{(idea.description || '').length > 140 ? '…' : ''}
         </p>
       )}
 
-      <div style={{ fontSize: 12, color: '#CCCCCC', marginTop: preview ? 0 : 12 }}>
-        {new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: preview ? 0 : 8 }}>
+        <div style={{ fontSize: 12, color: '#CCCCCC' }}>
+          {new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </div>
+        {tags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+            {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
+          </div>
+        )}
       </div>
     </div>
   )
