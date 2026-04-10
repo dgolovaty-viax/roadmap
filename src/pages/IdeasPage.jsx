@@ -532,6 +532,7 @@ function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, 
         opacity: dragging ? 0.35 : 1,
         transition: 'box-shadow 0.15s, opacity 0.15s, border 0.1s',
         userSelect: 'none',
+        display: 'flex', flexDirection: 'column',
       }}
     >
       {/* drag handle + title row */}
@@ -547,21 +548,16 @@ function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, 
       </div>
 
       {preview && (
-        <p style={{ fontSize: 13, color: '#888888', margin: '0 0 14px 0', lineHeight: 1.65 }}>
+        <p style={{ fontSize: 13, color: '#888888', margin: '0 0 0 0', lineHeight: 1.65, flex: 1 }}>
           {preview}{(idea.description || '').length > 140 ? '…' : ''}
         </p>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: preview ? 0 : 8 }}>
-        <div style={{ fontSize: 12, color: '#CCCCCC' }}>
-          {new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 14 }}>
+          {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
         </div>
-        {tags.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
-            {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }
