@@ -137,7 +137,7 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting }) {
         {ideas.map(idea => {
           const isSelected = selected.has(idea.id)
           const isDisabled = !isSelected && selected.size >= MAX_VOTES
-          const tagName = idea.idea_tags?.name
+          const ideaTags = (idea.idea_tag_assignments || []).map(a => a.idea_tags).filter(Boolean)
 
           return (
             <div
@@ -157,7 +157,11 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting }) {
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
                     {idea.title}
                   </h3>
-                  {tagName && <TagBadge name={tagName} />}
+                  {ideaTags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {ideaTags.map(t => <TagBadge key={t.id} name={t.name} />)}
+                    </div>
+                  )}
                 </div>
                 {idea.description && (
                   <p style={{ fontSize: 12, color: '#888888', margin: 0, lineHeight: 1.6 }}>

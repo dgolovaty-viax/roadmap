@@ -50,75 +50,103 @@ const fieldLabel = {
 
 const darkFieldLabel = { ...fieldLabel, color: '#777777' }
 
+// ── helpers ────────────────────────────────────────────────────────────
+
+function normalizeTags(idea) {
+  const assignments = idea.idea_tag_assignments || []
+  return assignments.map(a => a.idea_tags).filter(Boolean)
+}
+
 // ── TagBadge ───────────────────────────────────────────────────────────
 
-function TagBadge({ name }) {
+function TagBadge({ name, onRemove }) {
   if (!name) return null
   const { bg, color, border } = tagPalette(name)
   return (
     <span style={{
       background: bg, color, border: `1px solid ${border}`,
       fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-      padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase', whiteSpace: 'nowrap',
+      padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
+      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
       {name}
+      {onRemove && (
+        <span
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          style={{ cursor: 'pointer', fontWeight: 900, fontSize: 13, lineHeight: 1, opacity: 0.7 }}
+        >×</span>
+      )}
     </span>
   )
 }
 
-// ── TagSelector ────────────────────────────────────────────────────────
+// ── MultiTagSelector ───────────────────────────────────────────────────
 
-function TagSelector({ value, tags, onSelect, onCreateAndSelect, dark }) {
+function MultiTagSelector({ selectedTags, allTags, onAdd, onRemove, onCreateAndAdd, dark }) {
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
   const field = dark ? darkField : lightField
+  const selectedIds = new Set(selectedTags.map(t => t.id))
+  const available = allTags.filter(t => !selectedIds.has(t.id))
 
   const handleCreate = async () => {
     const name = newName.trim()
     if (!name) return
-    const tag = await onCreateAndSelect(name)
-    onSelect(tag)
+    await onCreateAndAdd(name)
     setNewName('')
     setShowNew(false)
   }
 
-  if (showNew) {
-    return (
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          autoFocus
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleCreate()
-            if (e.key === 'Escape') { setShowNew(false); setNewName('') }
-          }}
-          placeholder="New tag name"
-          style={{ ...field, flex: 1 }}
-        />
-        <button onClick={handleCreate} style={btn('#4FD0A5', '#1E1E1E')}>Add</button>
-        <button
-          onClick={() => { setShowNew(false); setNewName('') }}
-          style={btn(dark ? '#2A2A2A' : '#F3F3F3', dark ? '#AAAAAA' : '#555555', dark ? '#383838' : '#DDDDDD')}
-        >Cancel</button>
-      </div>
-    )
-  }
-
   return (
-    <select
-      value={value || ''}
-      onChange={e => {
-        if (e.target.value === '__new__') { setShowNew(true); return }
-        const tag = tags.find(t => t.id === e.target.value)
-        onSelect(tag || null)
-      }}
-      style={{ ...field, background: dark ? '#2A2A2A' : '#FFFFFF' }}
-    >
-      <option value="">No tag</option>
-      {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-      <option value="__new__">+ Create new tag…</option>
-    </select>
+    <div>
+      {/* Selected tags as removable badges */}
+      {selectedTags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {selectedTags.map(tag => (
+            <TagBadge key={tag.id} name={tag.name} onRemove={() => onRemove(tag)} />
+          ))}
+        </div>
+      )}
+
+      {/* Add more tags */}
+      {showNew ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleCreate()
+              if (e.key === 'Escape') { setShowNew(false); setNewName('') }
+            }}
+            placeholder="New tag name"
+            style={{ ...field, flex: 1 }}
+          />
+          <button onClick={handleCreate} style={btn('#4FD0A5', '#1E1E1E')}>Add</button>
+          <button
+            onClick={() => { setShowNew(false); setNewName('') }}
+            style={btn(dark ? '#2A2A2A' : '#F3F3F3', dark ? '#AAAAAA' : '#555555', dark ? '#383838' : '#DDDDDD')}
+          >Cancel</button>
+        </div>
+      ) : (
+        <select
+          value=""
+          onChange={e => {
+            const val = e.target.value
+            if (!val) return
+            if (val === '__new__') { setShowNew(true); return }
+            const tag = allTags.find(t => t.id === val)
+            if (tag) onAdd(tag)
+            e.target.value = ''
+          }}
+          style={{ ...field, background: dark ? '#2A2A2A' : '#FFFFFF' }}
+        >
+          <option value="">{selectedTags.length === 0 ? 'Add a tag…' : 'Add another tag…'}</option>
+          {available.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          <option value="__new__">+ Create new tag…</option>
+        </select>
+      )}
+    </div>
   )
 }
 
@@ -131,7 +159,7 @@ function useIdeas() {
   const load = useCallback(async () => {
     try {
       const data = await api.ideas.list()
-      setIdeas(data || [])
+      setIdeas((data || []).map(i => ({ ...i, tags: normalizeTags(i) })))
     } catch (e) {
       console.error('Failed to load ideas', e)
     } finally {
@@ -143,11 +171,12 @@ function useIdeas() {
 
   const upsert = async (idea) => {
     const saved = await api.ideas.upsert(idea)
+    const normalized = { ...saved, tags: normalizeTags(saved) }
     setIdeas(prev => {
-      const idx = prev.findIndex(i => i.id === saved.id)
-      return idx >= 0 ? prev.map(i => i.id === saved.id ? saved : i) : [saved, ...prev]
+      const idx = prev.findIndex(i => i.id === normalized.id)
+      return idx >= 0 ? prev.map(i => i.id === normalized.id ? normalized : i) : [normalized, ...prev]
     })
-    return saved
+    return normalized
   }
 
   const remove = async (id) => {
@@ -399,7 +428,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {topIdeas.map((idea, i) => {
             const count = tally[idea.id] || 0
-            const tagName = idea.idea_tags?.name
+            const ideaTags = idea.tags || []
             const isSelected = selected.has(idea.id)
 
             return (
@@ -426,9 +455,9 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
                 {/* Idea info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
-                    {tagName && <TagBadge name={tagName} />}
+                    {ideaTags.map(t => <TagBadge key={t.id} name={t.name} />)}
                   </div>
                   {idea.description && (
                     <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
@@ -470,7 +499,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 function IdeaCard({ idea, onClick }) {
   const [hovered, setHovered] = useState(false)
-  const tagName = idea.idea_tags?.name
+  const tags = idea.tags || []
   const preview = (idea.description || '').trim().slice(0, 140)
 
   return (
@@ -485,11 +514,15 @@ function IdeaCard({ idea, onClick }) {
         transition: 'box-shadow 0.15s',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: preview ? 8 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: (tags.length > 0 || preview) ? 8 : 0 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
           {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
         </h3>
-        {tagName && <TagBadge name={tagName} />}
+        {tags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end', flexShrink: 0 }}>
+            {tags.map(t => <TagBadge key={t.id} name={t.name} />)}
+          </div>
+        )}
       </div>
 
       {preview && (
@@ -508,20 +541,33 @@ function IdeaCard({ idea, onClick }) {
 // ── CreateModal ────────────────────────────────────────────────────────
 
 function CreateModal({ tags, onCreateTag, onSave, onClose }) {
-  const [title, setTitle]       = useState('')
+  const [title, setTitle]             = useState('')
   const [description, setDescription] = useState('')
-  const [tag, setTag]           = useState(null)
-  const [saving, setSaving]     = useState(false)
+  const [selectedTags, setSelectedTags] = useState([])
+  const [saving, setSaving]           = useState(false)
 
   const handleSave = async () => {
     if (!title.trim() || saving) return
     setSaving(true)
     try {
-      await onSave({ id: crypto.randomUUID(), title: title.trim(), description, tagId: tag?.id || null })
+      await onSave({ id: crypto.randomUUID(), title: title.trim(), description, tagIds: selectedTags.map(t => t.id) })
       onClose()
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAddTag = (tag) => {
+    setSelectedTags(prev => prev.find(t => t.id === tag.id) ? prev : [...prev, tag])
+  }
+
+  const handleRemoveTag = (tag) => {
+    setSelectedTags(prev => prev.filter(t => t.id !== tag.id))
+  }
+
+  const handleCreateAndAdd = async (name) => {
+    const tag = await onCreateTag(name)
+    handleAddTag(tag)
   }
 
   return (
@@ -556,12 +602,13 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
         </div>
 
         <div style={{ marginBottom: 28 }}>
-          <label style={fieldLabel}>Tag</label>
-          <TagSelector
-            value={tag?.id || ''}
-            tags={tags}
-            onSelect={setTag}
-            onCreateAndSelect={onCreateTag}
+          <label style={fieldLabel}>Tags</label>
+          <MultiTagSelector
+            selectedTags={selectedTags}
+            allTags={tags}
+            onAdd={handleAddTag}
+            onRemove={handleRemoveTag}
+            onCreateAndAdd={handleCreateAndAdd}
             dark={false}
           />
         </div>
@@ -584,26 +631,37 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
 function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack }) {
-  const [idea, setIdea]     = useState(initial)
-  const [tag, setTag]       = useState(initial.idea_tags || null)
-  const [editing, setEditing] = useState(false)
+  const [idea, setIdea]         = useState(initial)
+  const [selectedTags, setSelectedTags] = useState(initial.tags || [])
+  const [editing, setEditing]   = useState(false)
 
   const handleSave = async () => {
-    await onSave({ ...idea, tagId: tag?.id || null })
+    await onSave({ ...idea, tagIds: selectedTags.map(t => t.id) })
     setEditing(false)
   }
 
   const handleCancel = () => {
     setIdea(initial)
-    setTag(initial.idea_tags || null)
+    setSelectedTags(initial.tags || [])
     setEditing(false)
+  }
+
+  const handleAddTag = (tag) => {
+    setSelectedTags(prev => prev.find(t => t.id === tag.id) ? prev : [...prev, tag])
+  }
+
+  const handleRemoveTag = (tag) => {
+    setSelectedTags(prev => prev.filter(t => t.id !== tag.id))
+  }
+
+  const handleCreateAndAdd = async (name) => {
+    const tag = await onCreateTag(name)
+    handleAddTag(tag)
   }
 
   const handleDelete = () => {
     if (window.confirm('Delete this idea? This cannot be undone.')) onDelete(idea.id)
   }
-
-  const tagName = tag?.name
 
   return (
     <div>
@@ -641,12 +699,13 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
               style={{ ...darkField, fontSize: 20, fontWeight: 600, marginBottom: 18 }}
             />
             <div>
-              <label style={darkFieldLabel}>Tag</label>
-              <TagSelector
-                value={tag?.id || ''}
-                tags={tags}
-                onSelect={setTag}
-                onCreateAndSelect={onCreateTag}
+              <label style={darkFieldLabel}>Tags</label>
+              <MultiTagSelector
+                selectedTags={selectedTags}
+                allTags={tags}
+                onAdd={handleAddTag}
+                onRemove={handleRemoveTag}
+                onCreateAndAdd={handleCreateAndAdd}
                 dark={true}
               />
             </div>
@@ -656,10 +715,13 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 600, margin: '0 0 14px 0', lineHeight: 1.3 }}>
               {idea.title || <span style={{ color: '#555555', fontStyle: 'italic' }}>Untitled Idea</span>}
             </h2>
-            {tagName
-              ? <TagBadge name={tagName} />
-              : <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tag</span>
-            }
+            {selectedTags.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {selectedTags.map(t => <TagBadge key={t.id} name={t.name} />)}
+              </div>
+            ) : (
+              <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tags</span>
+            )}
           </>
         )}
       </div>
@@ -708,9 +770,9 @@ export default function IdeasPage() {
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
-  const usedTagIds = [...new Set(ideas.map(i => i.tag_id).filter(Boolean))]
+  const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
-  const filtered   = activeTag ? ideas.filter(i => i.tag_id === activeTag) : ideas
+  const filtered   = activeTag ? ideas.filter(i => (i.tags || []).some(t => t.id === activeTag)) : ideas
 
   // Auto-refresh votes every 20s when session is open
   useEffect(() => {

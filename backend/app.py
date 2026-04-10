@@ -324,7 +324,7 @@ def promote_ideas():
     idea_ids = body.get("ideaIds", [])
     promoted = []
     for idea_id in idea_ids:
-        idea_res = supabase.table("ideas").select("*, idea_tags(id, name)").eq("id", idea_id).single().execute()
+        idea_res = supabase.table("ideas").select(IDEA_SELECT).eq("id", idea_id).single().execute()
         if not idea_res.data:
             continue
         idea = idea_res.data
@@ -375,25 +375,35 @@ def create_idea_tag():
 
 # ── Ideas ───────────────────────────────────────────────────────────────
 
+IDEA_SELECT = "*, idea_tag_assignments(tag_id, idea_tags(id, name))"
+
+
 @app.route("/api/ideas", methods=["GET"])
 def list_ideas():
-    res = supabase.table("ideas").select("*, idea_tags(id, name)").order("created_at", desc=True).execute()
+    res = supabase.table("ideas").select(IDEA_SELECT).order("created_at", desc=True).execute()
     return jsonify(res.data)
 
 
 @app.route("/api/ideas", methods=["POST"])
 def upsert_idea():
-    body = request.json
+    body    = request.json
+    idea_id = body.get("id") or str(uuid.uuid4())
     row = {
-        "id":          body.get("id") or str(uuid.uuid4()),
+        "id":          idea_id,
         "title":       body.get("title", ""),
         "description": body.get("description", ""),
-        "tag_id":      body.get("tagId") or None,
         "updated_at":  now(),
     }
-    res = supabase.table("ideas").upsert(row, on_conflict="id").execute()
-    idea_id = (res.data[0] if res.data else row)["id"]
-    full = supabase.table("ideas").select("*, idea_tags(id, name)").eq("id", idea_id).single().execute()
+    supabase.table("ideas").upsert(row, on_conflict="id").execute()
+
+    # Sync tags via junction table
+    tag_ids = body.get("tagIds") or []
+    supabase.table("idea_tag_assignments").delete().eq("idea_id", idea_id).execute()
+    if tag_ids:
+        assignments = [{"idea_id": idea_id, "tag_id": tid} for tid in tag_ids]
+        supabase.table("idea_tag_assignments").insert(assignments).execute()
+
+    full = supabase.table("ideas").select(IDEA_SELECT).eq("id", idea_id).single().execute()
     return jsonify(full.data), 200
 
 
