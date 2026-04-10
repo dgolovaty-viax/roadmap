@@ -533,26 +533,31 @@ function IdeaCard({ idea, onClick, dragging, dragOver, onDragStart, onDragOver, 
         transition: 'box-shadow 0.15s, opacity 0.15s, border 0.1s',
         userSelect: 'none',
         display: 'flex', flexDirection: 'column',
+        minWidth: 0,
       }}
     >
-      {/* drag handle + title row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-        <span style={{
-          fontSize: 14, color: hovered ? '#BBBBBB' : '#DDDDDD',
-          lineHeight: 1.4, flexShrink: 0, marginTop: 2,
-          transition: 'color 0.15s', cursor: 'grab',
-        }}>⠿</span>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
-          {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
-        </h3>
+      {/* Upper content — grows to fill cell, pushes tags to bottom */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* drag handle + title */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: preview ? 8 : 0 }}>
+          <span style={{
+            fontSize: 14, color: hovered ? '#BBBBBB' : '#DDDDDD',
+            lineHeight: 1.4, flexShrink: 0, marginTop: 2,
+            transition: 'color 0.15s', cursor: 'grab',
+          }}>⠿</span>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' }}>
+            {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
+          </h3>
+        </div>
+
+        {preview && (
+          <p style={{ fontSize: 13, color: '#888888', margin: 0, lineHeight: 1.65 }}>
+            {preview}{(idea.description || '').length > 140 ? '…' : ''}
+          </p>
+        )}
       </div>
 
-      {preview && (
-        <p style={{ fontSize: 13, color: '#888888', margin: '0 0 0 0', lineHeight: 1.65, flex: 1 }}>
-          {preview}{(idea.description || '').length > 140 ? '…' : ''}
-        </p>
-      )}
-
+      {/* Tags — always anchored to bottom */}
       {tags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 14 }}>
           {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
