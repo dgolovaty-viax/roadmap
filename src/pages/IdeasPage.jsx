@@ -789,6 +789,7 @@ export default function IdeasPage() {
   } = useVoteSession()
 
   const [activeTags, setActiveTags]         = useState(new Set())
+  const [searchQuery, setSearchQuery]       = useState('')
   const [selectedId, setSelectedId]         = useState(null)
   const [showCreate, setShowCreate]         = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
@@ -830,9 +831,14 @@ export default function IdeasPage() {
     sorted.forEach((tag, i) => { map[tag.id] = TAG_PALETTE[i % TAG_PALETTE.length] })
     return map
   }, [tags])
-  const filtered   = activeTags.size > 0
+  const filtered = (activeTags.size > 0
     ? ideas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
     : ideas
+  ).filter(i => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return true
+    return (i.title || '').toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q)
+  })
 
   function toggleTag(id) {
     setActiveTags(prev => {
@@ -975,6 +981,39 @@ export default function IdeasPage() {
               <ParticipantPanel votes={votes} onRefresh={refreshVotes} />
             )}
 
+            {/* Search bar */}
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <span style={{
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 15, color: '#BBBBBB', pointerEvents: 'none',
+              }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search ideas by title or description…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  border: '1px solid #E2E0DC', borderRadius: 8,
+                  padding: '10px 36px 10px 38px', fontSize: 14,
+                  fontFamily: FONT, color: '#1E1E1E', background: '#FFFFFF',
+                  outline: 'none',
+                }}
+                onFocus={e => { e.target.style.borderColor = '#4FD0A5' }}
+                onBlur={e => { e.target.style.borderColor = '#E2E0DC' }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 16, color: '#AAAAAA', lineHeight: 1, padding: 2,
+                  }}
+                >×</button>
+              )}
+            </div>
+
             {/* Toolbar: tag filters + action buttons */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1026,7 +1065,7 @@ export default function IdeasPage() {
             {/* Count */}
             <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 20px 0' }}>
               {loading ? 'Loading…' : filtered.length === 0
-                ? (activeTags.size > 0 ? 'No ideas match the selected tags' : 'No ideas yet')
+                ? (searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search' : 'No ideas yet')
                 : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
               }
             </p>
@@ -1037,9 +1076,9 @@ export default function IdeasPage() {
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 14 }}>💡</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>
-                    {activeTags.size > 0 ? 'No ideas match the selected tags.' : 'No ideas yet. Add the first one.'}
+                    {searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search.' : 'No ideas yet. Add the first one.'}
                   </p>
-                  {activeTags.size === 0 && (
+                  {!searchQuery.trim() && activeTags.size === 0 && (
                     <button
                       onClick={() => setShowCreate(true)}
                       style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}
