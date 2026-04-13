@@ -1,7 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '@/components/AuthProvider'
 
-// Full viax logo SVG (canonical paths from brand assets)
 function ViaxLogo() {
   return (
     <svg width="90" height="24" viewBox="0 0 112 30" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -27,9 +25,6 @@ const navLinkClass = ({ isActive }) =>
   }`
 
 export default function Nav() {
-  const { session, signOut } = useAuth()
-  const email = session?.user?.email
-
   return (
     <nav
       style={{ fontFamily: "'Funnel Sans', 'Inter', system-ui, sans-serif" }}
@@ -41,7 +36,7 @@ export default function Nav() {
       </NavLink>
 
       {/* Nav links */}
-      <div className="flex items-center gap-7 flex-1">
+      <div className="flex items-center gap-7">
         <NavLink to="/" end className={navLinkClass}>
           Roadmap
         </NavLink>
@@ -55,37 +50,6 @@ export default function Nav() {
           Ideas
         </NavLink>
       </div>
-
-      {/* User info + sign out */}
-      {email && (
-        <div className="flex items-center gap-3 shrink-0">
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{email}</span>
-          <button
-            onClick={signOut}
-            style={{
-              fontSize: 12,
-              color: 'rgba(255,255,255,0.5)',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 5,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontFamily: "'Funnel Sans', 'Inter', system-ui, sans-serif",
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      )}
     </nav>
   )
 }

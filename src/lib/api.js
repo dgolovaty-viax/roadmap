@@ -1,21 +1,10 @@
 // Central API client — all calls go through the Flask backend
-import { supabase } from '@/lib/supabase'
-
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-async function request(method, path, body, { authRequired = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
-
-  if (authRequired) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
-    }
-  }
-
+async function request(method, path, body) {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
@@ -54,9 +43,9 @@ export const api = {
   ideaVoteSessions: {
     list:   ()                   => request('GET',  '/api/idea-vote-sessions'),
     create: ()                   => request('POST', '/api/idea-vote-sessions'),
-    get:    (id)                 => request('GET',  `/api/idea-vote-sessions/${id}`, undefined, { authRequired: false }),
+    get:    (id)                 => request('GET',  `/api/idea-vote-sessions/${id}`),
     close:  (id)                 => request('POST', `/api/idea-vote-sessions/${id}/close`),
-    vote:   (id, email, ideaIds) => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }, { authRequired: false }),
+    vote:   (id, email, ideaIds) => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }),
   },
 
   promoteIdeas: (ideaIds) => request('POST', '/api/promote-ideas', { ideaIds }),
