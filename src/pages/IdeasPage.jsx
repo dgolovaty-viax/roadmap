@@ -1105,7 +1105,7 @@ export default function IdeasPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                {!session && !loadingSession && (
+                {(!session || session.status === 'closed') && !loadingSession && (
                   <button
                     onClick={handleStartVoting}
                     disabled={startingVote}
