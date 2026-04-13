@@ -86,25 +86,27 @@ function jaccard(a, b) {
   return inter / (a.size + b.size - inter)
 }
 
-// Returns a Set of idea IDs that have at least one likely duplicate
-function findDuplicateIds(ideas) {
-  const ids = new Set()
+// Returns Map<ideaId, Array<{id, title}>> of which ideas each idea is similar to
+function buildDuplicateMap(ideas) {
+  const map = new Map()
   for (let i = 0; i < ideas.length; i++) {
     for (let j = i + 1; j < ideas.length; j++) {
       const a = ideas[i], b = ideas[j]
       const tA = (a.title || '').toLowerCase().trim()
       const tB = (b.title || '').toLowerCase().trim()
-      // Exact title match always flags
-      if (tA && tA === tB) { ids.add(a.id); ids.add(b.id); continue }
-      // Jaccard similarity across title + description words
-      const sim = jaccard(
+      const isMatch = (tA && tA === tB) || jaccard(
         keyWords((a.title || '') + ' ' + (a.description || '')),
         keyWords((b.title || '') + ' ' + (b.description || ''))
-      )
-      if (sim >= 0.4) { ids.add(a.id); ids.add(b.id) }
+      ) >= 0.4
+      if (isMatch) {
+        if (!map.has(a.id)) map.set(a.id, [])
+        if (!map.has(b.id)) map.set(b.id, [])
+        map.get(a.id).push({ id: b.id, title: b.title })
+        map.get(b.id).push({ id: a.id, title: a.title })
+      }
     }
   }
-  return ids
+  return map
 }
 
 // ── TagBadge ───────────────────────────────────────────────────────────
@@ -711,7 +713,7 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
-function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote }) {
+function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote, duplicates = [], onSelectIdea }) {
   const [idea, setIdea]         = useState(initial)
   const [selectedTags, setSelectedTags] = useState(initial.tags || [])
   const [editing, setEditing]   = useState(false)
@@ -819,6 +821,38 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
         )}
       </div>
 
+      {/* Possible duplicates panel */}
+      {duplicates.length > 0 && (
+        <div style={{ marginBottom: 20, border: '1px solid #FFD966', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: '#FFF8E6', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13 }}>⚠</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#996600', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Possible duplicate{duplicates.length > 1 ? 's' : ''} detected
+            </span>
+          </div>
+          <div style={{ background: '#FFFDF5', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {duplicates.map(d => (
+              <button
+                key={d.id}
+                onClick={() => onSelectIdea && onSelectIdea(d.id)}
+                style={{
+                  background: '#FFFFFF', border: '1px solid #FFD966', borderRadius: 6,
+                  padding: '9px 14px', textAlign: 'left', cursor: 'pointer',
+                  fontFamily: FONT, fontSize: 13, color: '#1E1E1E', fontWeight: 500,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#FFF8E6'}
+                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+              >
+                <span>{d.title || <em style={{ color: '#AAAAAA' }}>Untitled</em>}</span>
+                <span style={{ fontSize: 11, color: '#996600', fontWeight: 700, flexShrink: 0 }}>View →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Description section */}
       <div>
         <div style={{ background: '#1E1E1E', borderRadius: '6px 6px 0 0', padding: '10px 18px', display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -890,7 +924,8 @@ export default function IdeasPage() {
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
 
   // Potential duplicates — computed once per ideas change
-  const duplicateIds = useMemo(() => findDuplicateIds(ideas), [ideas])
+  const duplicateMap = useMemo(() => buildDuplicateMap(ideas), [ideas])
+  const duplicateIds = useMemo(() => new Set(duplicateMap.keys()), [duplicateMap])
 
   // Assign each tag a unique color by its index in the sorted tags list
   const tagColorMap = useMemo(() => {
@@ -1024,6 +1059,8 @@ export default function IdeasPage() {
             onDelete={handleDelete}
             onBack={() => setSelectedId(null)}
             onPromote={handlePromoteSingle}
+            duplicates={duplicateMap.get(selected.id) || []}
+            onSelectIdea={setSelectedId}
           />
 
         /* ── Results view (after vote closed) ── */
