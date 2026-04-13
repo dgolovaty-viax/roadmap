@@ -711,7 +711,7 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
-function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack }) {
+function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote }) {
   const [idea, setIdea]         = useState(initial)
   const [selectedTags, setSelectedTags] = useState(initial.tags || [])
   const [editing, setEditing]   = useState(false)
@@ -764,6 +764,18 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <>
               <button onClick={handleDelete} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Delete</button>
               <button onClick={() => setEditing(true)} style={btn('#1E1E1E', '#FFFFFF')}>Edit</button>
+              {onPromote && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Move "${idea.title}" to Planning? It will be converted to an epic and removed from Ideas.`)) {
+                      onPromote(idea.id)
+                    }
+                  }}
+                  style={btn('#4FD0A5', '#1E1E1E')}
+                >
+                  → Move to Planning
+                </button>
+              )}
             </>
           )}
         </div>
@@ -987,6 +999,12 @@ export default function IdeasPage() {
     dismissResults()
   }
 
+  const handlePromoteSingle = async (ideaId) => {
+    await api.promoteIdeas([ideaId])
+    removeMany([ideaId])
+    setSelectedId(null)
+  }
+
   return (
     <TagColorContext.Provider value={tagColorMap}>
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
@@ -1005,6 +1023,7 @@ export default function IdeasPage() {
             onSave={handleSave}
             onDelete={handleDelete}
             onBack={() => setSelectedId(null)}
+            onPromote={handlePromoteSingle}
           />
 
         /* ── Results view (after vote closed) ── */
