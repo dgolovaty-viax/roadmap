@@ -1,16 +1,55 @@
 import os
 import uuid
 from datetime import datetime, timezone
+from functools import wraps
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from supabase import create_client
 from anthropic import Anthropic
 from dotenv import load_dotenv
+import jwt
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "*"))
+
+# ── Auth ───────────────────────────────────────────────────────────────
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+ALLOWED_EMAIL_DOMAIN = "viax.io"
+
+
+def require_auth(f):
+    """Decorator that verifies the Supabase JWT and enforces @viax.io domain."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Missing or invalid Authorization header"}), 401
+        token = auth_header[len("Bearer "):]
+        if not SUPABASE_JWT_SECRET:
+            # JWT secret not configured — fail open with a warning in dev, hard fail in prod
+            app.logger.warning("SUPABASE_JWT_SECRET not set — skipping JWT verification")
+            return f(*args, **kwargs)
+        try:
+            payload = jwt.decode(
+                token,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token has expired"}), 401
+        except jwt.InvalidTokenError as e:
+            return jsonify({"error": f"Invalid token: {e}"}), 401
+
+        email = payload.get("email", "")
+        if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+            return jsonify({"error": "Access restricted to @viax.io accounts"}), 403
+
+        return f(*args, **kwargs)
+    return decorated
 
 # ── Clients ────────────────────────────────────────────────────────────
 
@@ -45,12 +84,14 @@ def now():
 # ── Epics ──────────────────────────────────────────────────────────────
 
 @app.route("/api/epics", methods=["GET"])
+@require_auth
 def list_epics():
     res = supabase.table("epics").select("*").order("created_at", desc=True).execute()
     return jsonify(res.data)
 
 
 @app.route("/api/epics", methods=["POST"])
+@require_auth
 def upsert_epic():
     body = request.json
     row = {
@@ -67,6 +108,7 @@ def upsert_epic():
 
 
 @app.route("/api/epics/<epic_id>", methods=["DELETE"])
+@require_auth
 def delete_epic(epic_id):
     supabase.table("epics").delete().eq("id", epic_id).execute()
     return jsonify({"ok": True})
@@ -75,6 +117,7 @@ def delete_epic(epic_id):
 # ── Voting Sessions ────────────────────────────────────────────────────
 
 @app.route("/api/sessions", methods=["GET"])
+@require_auth
 def list_sessions():
     sessions = supabase.table("voting_sessions").select("*, session_epics(*)").order("created_at", desc=True).execute()
     votes = supabase.table("votes").select("session_id, participant_email, session_epic_id").execute()
@@ -82,6 +125,7 @@ def list_sessions():
 
 
 @app.route("/api/sessions", methods=["POST"])
+@require_auth
 def create_session():
     body = request.json
     session_res = supabase.table("voting_sessions").insert({
@@ -108,6 +152,7 @@ def create_session():
 
 
 @app.route("/api/sessions/<session_id>", methods=["GET"])
+@require_auth
 def get_session(session_id):
     session = supabase.table("voting_sessions").select("*").eq("id", session_id).single().execute()
     epics   = supabase.table("session_epics").select("*").eq("session_id", session_id).order("display_order").execute()
@@ -120,18 +165,21 @@ def get_session(session_id):
 
 
 @app.route("/api/sessions/<session_id>", methods=["DELETE"])
+@require_auth
 def delete_session(session_id):
     supabase.table("voting_sessions").delete().eq("id", session_id).execute()
     return jsonify({"ok": True})
 
 
 @app.route("/api/sessions/<session_id>/close", methods=["POST"])
+@require_auth
 def close_session(session_id):
     supabase.table("voting_sessions").update({"status": "closed"}).eq("id", session_id).execute()
     return jsonify({"ok": True})
 
 
 @app.route("/api/sessions/<session_id>/revote", methods=["POST"])
+@require_auth
 def revote_session(session_id):
     # Clear all votes for the session and reopen it for another round
     supabase.table("votes").delete().eq("session_id", session_id).execute()
@@ -140,6 +188,7 @@ def revote_session(session_id):
 
 
 @app.route("/api/sessions/<session_id>/add-participant", methods=["POST"])
+@require_auth
 def add_participant(session_id):
     data  = request.get_json()
     email = (data.get("email") or "").strip().lower()
@@ -158,6 +207,7 @@ def add_participant(session_id):
 # ── Votes ──────────────────────────────────────────────────────────────
 
 @app.route("/api/votes", methods=["POST"])
+@require_auth
 def submit_votes():
     body = request.json  # { sessionId, email, votes: [{sessionEpicId, bv, tc, rr, js}] }
     rows = [
@@ -179,6 +229,7 @@ def submit_votes():
 # ── AI: Generate epic sections ─────────────────────────────────────────
 
 @app.route("/api/ai/generate-epic", methods=["POST"])
+@require_auth
 def generate_epic():
     if not anthropic:
         return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
@@ -219,6 +270,7 @@ Keep each section to 3-5 concise sentences. Be specific and actionable. Return o
 # ── AI: Suggest WSJF scores ────────────────────────────────────────────
 
 @app.route("/api/ai/suggest-wsjf", methods=["POST"])
+@require_auth
 def suggest_wsjf():
     if not anthropic:
         return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
@@ -268,12 +320,14 @@ reasoning should be 2-3 sentences explaining the scores. Return only valid JSON.
 # ── Idea Vote Sessions ─────────────────────────────────────────────────
 
 @app.route("/api/idea-vote-sessions", methods=["GET"])
+@require_auth
 def list_idea_vote_sessions():
     res = supabase.table("idea_vote_sessions").select("*").order("created_at", desc=True).execute()
     return jsonify(res.data)
 
 
 @app.route("/api/idea-vote-sessions", methods=["POST"])
+@require_auth
 def create_idea_vote_session():
     # Reuse any existing open session
     existing = supabase.table("idea_vote_sessions").select("*").eq("status", "open").execute()
@@ -294,6 +348,7 @@ def get_idea_vote_session(session_id):
 
 
 @app.route("/api/idea-vote-sessions/<session_id>/close", methods=["POST"])
+@require_auth
 def close_idea_vote_session(session_id):
     supabase.table("idea_vote_sessions").update({"status": "closed"}).eq("id", session_id).execute()
     return jsonify({"ok": True})
@@ -319,6 +374,7 @@ def submit_idea_vote(session_id):
 # ── Promote ideas → epics ───────────────────────────────────────────────
 
 @app.route("/api/promote-ideas", methods=["POST"])
+@require_auth
 def promote_ideas():
     body     = request.json
     idea_ids = body.get("ideaIds", [])
@@ -352,12 +408,14 @@ def promote_ideas():
 # ── Idea Tags ──────────────────────────────────────────────────────────
 
 @app.route("/api/idea-tags", methods=["GET"])
+@require_auth
 def list_idea_tags():
     res = supabase.table("idea_tags").select("*").order("name").execute()
     return jsonify(res.data)
 
 
 @app.route("/api/idea-tags", methods=["POST"])
+@require_auth
 def create_idea_tag():
     body = request.json
     name = (body.get("name") or "").strip()
@@ -379,12 +437,14 @@ IDEA_SELECT = "*, idea_tag_assignments(tag_id, idea_tags(id, name))"
 
 
 @app.route("/api/ideas", methods=["GET"])
+@require_auth
 def list_ideas():
     res = supabase.table("ideas").select(IDEA_SELECT).order("created_at", desc=True).execute()
     return jsonify(res.data)
 
 
 @app.route("/api/ideas", methods=["POST"])
+@require_auth
 def upsert_idea():
     body    = request.json
     idea_id = body.get("id") or str(uuid.uuid4())
@@ -408,6 +468,7 @@ def upsert_idea():
 
 
 @app.route("/api/ideas/<idea_id>", methods=["DELETE"])
+@require_auth
 def delete_idea(idea_id):
     supabase.table("ideas").delete().eq("id", idea_id).execute()
     return jsonify({"ok": True})

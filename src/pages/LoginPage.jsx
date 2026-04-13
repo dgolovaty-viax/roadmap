@@ -1,10 +1,12 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 
-// Full viax logo SVG (canonical paths from brand assets)
+const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
+
 function ViaxLogo() {
   return (
-    <svg width="90" height="24" viewBox="0 0 112 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="108" height="29" viewBox="0 0 112 30" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M26.3318 5.03259C27.7215 5.03259 28.8481 3.90601 28.8481 2.5163C28.8481 1.12658 27.7215 0 26.3318 0C24.9421 0 23.8155 1.12658 23.8155 2.5163C23.8155 3.90601 24.9421 5.03259 26.3318 5.03259Z" fill="#4FD0A5"/>
       <path d="M28.7477 9.63601C28.7477 9.2752 28.7417 7.87907 28.5 7.44922C28.1039 6.63579 27.2717 6.07379 26.3061 6.07379C24.9578 6.07379 23.9397 7.1691 23.865 8.51532C23.8599 8.60696 23.83 9.34875 23.8335 9.51151L23.8321 26.8734C23.8321 26.8734 23.8387 27.3595 23.8663 27.5833C23.9213 28.9258 24.9672 29.9971 26.3061 29.9971C27.6546 29.9971 28.7475 28.9041 28.7475 27.5558C28.7475 27.5431 28.7457 27.5306 28.7456 27.5179C28.7457 27.5048 28.7477 27.256 28.7477 27.2428V9.63601Z" fill="#4FD0A5"/>
       <path d="M23.0058 8.6736V8.58875C23.0058 8.28879 22.9611 8.01632 22.876 7.76923C22.8757 7.76783 22.8752 7.76662 22.8748 7.76557C22.864 7.7341 22.8531 7.70297 22.8409 7.67237C22.5124 6.7586 21.6408 6.10375 20.6136 6.10375C20.0041 6.10375 19.4505 6.33606 19.0306 6.71426C18.9853 6.74539 18.94 6.77582 18.8949 6.80955L18.8607 6.84068C18.8191 6.88554 18.756 6.97283 18.6543 7.14219C18.5948 7.22983 18.5428 7.32269 18.4953 7.41815C17.8415 8.58857 16.1564 11.9578 11.5759 21.6761C11.5759 21.6761 5.01434 8.05474 4.70482 7.53778C4.23463 6.55776 3.47145 5.97003 2.43283 5.97003C1.08905 5.97003 0 7.05942 0 8.40304C0 8.62839 0.0328644 8.84558 0.0904206 9.0525V9.05615L0.0944197 9.06798C0.135283 9.2123 0.189535 9.35071 0.255264 9.48287C0.696238 10.5352 1.93604 13.1685 4.00493 17.4458C5.16736 19.8487 6.50923 22.7128 8.20009 26.1646C9.26984 28.5223 10.1984 29.821 11.5161 29.821H11.5797C13.015 29.821 13.6132 28.6191 14.1341 27.5367C14.6034 26.5617 15.0851 25.589 15.5687 24.6206C16.6355 22.4852 17.6657 20.3293 18.7061 18.1808C18.9412 17.6953 19.1773 17.2105 19.4135 16.7255C21.6068 12.1821 22.4608 10.2534 22.7934 9.39836C22.7973 9.38914 22.8006 9.37958 22.8042 9.37019C23.0058 8.8501 23.0058 8.74351 23.0058 8.6736Z" fill="#4FD0A5"/>
@@ -19,73 +21,110 @@ function ViaxLogo() {
   )
 }
 
-const navLinkClass = ({ isActive }) =>
-  `text-sm transition-colors duration-150 ${
-    isActive
-      ? 'text-[#90E9B8]'
-      : 'text-[rgba(255,255,255,0.65)] hover:text-white'
-  }`
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  )
+}
 
-export default function Nav() {
-  const { session, signOut } = useAuth()
-  const email = session?.user?.email
+export default function LoginPage() {
+  const { domainError } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { hd: 'viax.io' },
+      },
+    })
+    // Page will redirect; no need to setLoading(false)
+  }
 
   return (
-    <nav
-      style={{ fontFamily: "'Funnel Sans', 'Inter', system-ui, sans-serif" }}
-      className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-6 bg-[#1E1E1E] border-b border-[#383838]"
-    >
-      {/* Logo */}
-      <NavLink to="/" className="flex items-center shrink-0 mr-8">
-        <ViaxLogo />
-      </NavLink>
-
-      {/* Nav links */}
-      <div className="flex items-center gap-7 flex-1">
-        <NavLink to="/" end className={navLinkClass}>
-          Roadmap
-        </NavLink>
-        <NavLink to="/north-star" className={navLinkClass}>
-          North Star
-        </NavLink>
-        <NavLink to="/planning" className={navLinkClass}>
-          Planning
-        </NavLink>
-        <NavLink to="/ideas" className={navLinkClass}>
-          Ideas
-        </NavLink>
-      </div>
-
-      {/* User info + sign out */}
-      {email && (
-        <div className="flex items-center gap-3 shrink-0">
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{email}</span>
-          <button
-            onClick={signOut}
-            style={{
-              fontSize: 12,
-              color: 'rgba(255,255,255,0.5)',
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 5,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontFamily: "'Funnel Sans', 'Inter', system-ui, sans-serif",
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-            }}
-          >
-            Sign out
-          </button>
+    <div style={{
+      minHeight: '100vh',
+      background: '#F8F7F6',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: FONT,
+      padding: '24px',
+    }}>
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: 14,
+        padding: '48px 44px',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.08)',
+        border: '1px solid #E2E0DC',
+        maxWidth: 400,
+        width: '100%',
+        textAlign: 'center',
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
+          <ViaxLogo />
         </div>
-      )}
-    </nav>
+
+        {/* Heading */}
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#1E1E1E', margin: '0 0 8px 0' }}>
+          Sign in to Roadmap
+        </h1>
+        <p style={{ fontSize: 14, color: '#888888', margin: '0 0 32px 0', lineHeight: 1.6 }}>
+          Use your <strong style={{ color: '#1E1E1E' }}>@viax.io</strong> Google account to continue.
+        </p>
+
+        {/* Domain error */}
+        {domainError && (
+          <div style={{
+            background: '#FFF3CD',
+            border: '1px solid #FFD966',
+            borderRadius: 6,
+            padding: '10px 14px',
+            marginBottom: 20,
+            fontSize: 13,
+            color: '#856404',
+            textAlign: 'left',
+          }}>
+            Access is restricted to <strong>@viax.io</strong> accounts only. Please sign in with your viax Google account.
+          </div>
+        )}
+
+        {/* Sign in button */}
+        <button
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            width: '100%',
+            background: '#FFFFFF',
+            color: '#1E1E1E',
+            border: '1px solid #DDDDDD',
+            borderRadius: 7,
+            padding: '12px 0',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontFamily: FONT,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            opacity: loading ? 0.7 : 1,
+            transition: 'all 0.15s',
+          }}
+        >
+          <GoogleIcon />
+          {loading ? 'Redirecting…' : 'Sign in with Google'}
+        </button>
+      </div>
+    </div>
   )
 }

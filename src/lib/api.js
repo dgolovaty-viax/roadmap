@@ -1,11 +1,21 @@
 // Central API client — all calls go through the Flask backend
+import { supabase } from '@/lib/supabase'
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-async function request(method, path, body) {
+async function request(method, path, body, { authRequired = true } = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+
+  if (authRequired) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
@@ -42,11 +52,11 @@ export const api = {
   // ── Idea Vote Sessions ───────────────────────────────────────────────
 
   ideaVoteSessions: {
-    list:   ()                       => request('GET',  '/api/idea-vote-sessions'),
-    create: ()                       => request('POST', '/api/idea-vote-sessions'),
-    get:    (id)                     => request('GET',  `/api/idea-vote-sessions/${id}`),
-    close:  (id)                     => request('POST', `/api/idea-vote-sessions/${id}/close`),
-    vote:   (id, email, ideaIds)     => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }),
+    list:   ()                   => request('GET',  '/api/idea-vote-sessions'),
+    create: ()                   => request('POST', '/api/idea-vote-sessions'),
+    get:    (id)                 => request('GET',  `/api/idea-vote-sessions/${id}`, undefined, { authRequired: false }),
+    close:  (id)                 => request('POST', `/api/idea-vote-sessions/${id}/close`),
+    vote:   (id, email, ideaIds) => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }, { authRequired: false }),
   },
 
   promoteIdeas: (ideaIds) => request('POST', '/api/promote-ideas', { ideaIds }),
@@ -54,13 +64,13 @@ export const api = {
   // ── Sessions ────────────────────────────────────────────────────────
 
   sessions: {
-    list:   ()           => request('GET',  '/api/sessions'),
-    create: (data)       => request('POST', '/api/sessions', data),
-    get:    (id)         => request('GET',  `/api/sessions/${id}`),
-    delete: (id)         => request('DELETE', `/api/sessions/${id}`),
-    close:          (id)         => request('POST', `/api/sessions/${id}/close`),
-    revote:         (id)         => request('POST', `/api/sessions/${id}/revote`),
-    addParticipant: (id, email)  => request('POST', `/api/sessions/${id}/add-participant`, { email }),
+    list:           ()          => request('GET',    '/api/sessions'),
+    create:         (data)      => request('POST',   '/api/sessions', data),
+    get:            (id)        => request('GET',    `/api/sessions/${id}`),
+    delete:         (id)        => request('DELETE', `/api/sessions/${id}`),
+    close:          (id)        => request('POST',   `/api/sessions/${id}/close`),
+    revote:         (id)        => request('POST',   `/api/sessions/${id}/revote`),
+    addParticipant: (id, email) => request('POST',   `/api/sessions/${id}/add-participant`, { email }),
   },
 
   // ── Votes ────────────────────────────────────────────────────────────
@@ -76,4 +86,3 @@ export const api = {
     suggestWsjf:   (epic)           => request('POST', '/api/ai/suggest-wsjf',   { epic }),
   },
 }
-
