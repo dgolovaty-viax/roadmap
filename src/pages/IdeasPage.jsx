@@ -1124,12 +1124,13 @@ export default function IdeasPage() {
   // Vote history
   const [closedSessions, setClosedSessions] = useState([])
   const [historySession, setHistorySession] = useState(null)
+  const [refreshTick, setRefreshTick]       = useState(0)
 
   useEffect(() => {
     api.ideaVoteSessions.list()
       .then(all => setClosedSessions((all || []).filter(s => s.status === 'closed')))
       .catch(() => {})
-  }, [showResults])
+  }, [refreshTick])
 
   // Drag-to-rank state
   const [order, setOrder]       = useState(() => {
@@ -1241,9 +1242,10 @@ export default function IdeasPage() {
     finally { setStartingVote(false) }
   }
 
-  const handleCloseVote = () => {
+  const handleCloseVote = async () => {
     if (window.confirm(`Close the voting session? ${votes.length === 0 ? 'No votes have been cast yet.' : `${votes.length} ${votes.length === 1 ? 'person has' : 'people have'} voted.`} Participants will no longer be able to submit votes.`)) {
-      closeSession()
+      await closeSession()
+      setRefreshTick(t => t + 1)
     }
   }
 
@@ -1267,6 +1269,7 @@ export default function IdeasPage() {
     await api.promoteIdeas(ideaIds, session?.id)
     removeMany(ideaIds)
     dismissResults()
+    setRefreshTick(t => t + 1)
   }
 
   const handlePromoteSingle = async (ideaId) => {
