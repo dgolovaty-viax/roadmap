@@ -24,14 +24,17 @@ const STATUS_STYLE = {
 }
 
 // Map API response (snake_case) → app object (camelCase)
+// archived is stored inside sections._archived (no DB migration needed)
 function rowToEpic(row) {
+  const sections = row.sections || { why: '', customerValue: '', scope: '', risks: '', tech: '' }
   return {
     id:            row.id,
     title:         row.title,
     owner:         row.owner,
     status:        row.status,
     targetQuarter: row.target_quarter ?? row.targetQuarter ?? '',
-    sections:      row.sections || { why: '', customerValue: '', scope: '', risks: '', tech: '' },
+    sections,
+    archived:      !!(sections._archived),
     createdAt:     row.created_at ?? row.createdAt,
     updatedAt:     row.updated_at ?? row.updatedAt,
   }
@@ -45,6 +48,7 @@ function newEpic() {
     status: 'Draft',
     targetQuarter: '',
     sections: { why: '', customerValue: '', scope: '', risks: '', tech: '' },
+    archived: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -71,7 +75,12 @@ function useEpics() {
 
   const upsert = async (epic) => {
     try {
-      const saved = await api.epics.upsert(epic)
+      // Write archived flag into sections._archived so it persists without a DB migration
+      const toSave = {
+        ...epic,
+        sections: { ...epic.sections, _archived: !!epic.archived },
+      }
+      const saved = await api.epics.upsert(toSave)
       const mapped = rowToEpic(saved)
       setEpics(prev => {
         const idx = prev.findIndex(e => e.id === mapped.id)
@@ -136,7 +145,7 @@ function StatusBadge({ status }) {
 
 // ── EpicCard (list row) ────────────────────────────────────────────────
 
-function EpicCard({ epic, onClick }) {
+function EpicCard({ epic, onClick, dimmed }) {
   const [hovered, setHovered] = useState(false)
   const preview = epic.sections.why?.trim().slice(0, 150) || ''
 
@@ -146,21 +155,23 @@ function EpicCard({ epic, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8,
+        background: dimmed ? '#FAFAFA' : '#FFFFFF',
+        border: '1px solid #E2E0DC', borderRadius: 8,
         padding: '20px 24px', cursor: 'pointer',
+        opacity: dimmed ? 0.75 : 1,
         boxShadow: hovered ? '0 2px 16px rgba(0,0,0,0.07)' : 'none',
         transition: 'box-shadow 0.15s',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: preview ? 8 : 12 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: dimmed ? '#888888' : '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
           {epic.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Epic</span>}
         </h3>
         <StatusBadge status={epic.status} />
       </div>
 
       {preview && (
-        <p style={{ fontSize: 13, color: '#888888', margin: '0 0 14px 0', lineHeight: 1.65 }}>
+        <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 14px 0', lineHeight: 1.65 }}>
           {preview}{epic.sections.why.length > 150 ? '…' : ''}
         </p>
       )}
@@ -178,7 +189,7 @@ function EpicCard({ epic, onClick }) {
 
 // ── EpicDetail (view + edit) ───────────────────────────────────────────
 
-function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
+function EpicDetail({ initial, isNew, saving, onSave, onDelete, onArchive, onBack }) {
   const [epic,        setEpic]        = useState(initial)
   const [editing,     setEditing]     = useState(isNew)
   const [generating,  setGenerating]  = useState(false)
@@ -209,6 +220,13 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
 
   const handleDelete = () => {
     if (window.confirm('Delete this epic? This cannot be undone.')) onDelete(epic.id)
+  }
+
+  const handleArchive = () => {
+    const action = epic.archived ? 'unarchive' : 'archive'
+    if (window.confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this epic?`)) {
+      onArchive(epic.id, !epic.archived)
+    }
   }
 
   const handleGenerate = async () => {
@@ -245,12 +263,33 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
               <button onClick={handleCopyLink} style={btn(copied ? '#E8F9F3' : '#F3F3F3', copied ? '#1a7a5e' : '#555555', copied ? '#4FD0A5' : '#DDDDDD')}>
                 {copied ? '✓ Link copied' : '🔗 Copy link'}
               </button>
+              <button
+                onClick={handleArchive}
+                style={epic.archived
+                  ? btn('#E8F0FE', '#1a56db', '#93C5FD')
+                  : btn('#FFF8E6', '#996600', '#FFD966')
+                }
+              >
+                {epic.archived ? '↩ Unarchive' : '📦 Archive'}
+              </button>
               <button onClick={handleDelete} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Delete</button>
               <button onClick={() => setEditing(true)} style={btn('#1E1E1E', '#FFFFFF')}>Edit</button>
             </>
           )}
         </div>
       </div>
+
+      {/* Archived banner */}
+      {epic.archived && (
+        <div style={{
+          background: '#FFF8E6', border: '1px solid #FFD966', borderRadius: 6,
+          padding: '10px 16px', marginBottom: 16,
+          fontSize: 13, color: '#996600', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>📦</span>
+          <span>This epic has been archived (moved to Jira). It's hidden from the active list.</span>
+        </div>
+      )}
 
       {/* Metadata block */}
       <div style={{ background: '#1E1E1E', borderRadius: 10, padding: '24px 28px', marginBottom: 20 }}>
@@ -327,6 +366,42 @@ function EpicDetail({ initial, isNew, saving, onSave, onDelete, onBack }) {
   )
 }
 
+// ── Archived Section ───────────────────────────────────────────────────
+
+function ArchivedSection({ epics, onSelect }) {
+  const [open, setOpen] = useState(false)
+  if (epics.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0',
+          color: '#888888', fontSize: 13, fontWeight: 600,
+        }}
+      >
+        <span style={{ fontSize: 10, transform: open ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>▶</span>
+        Archived
+        <span style={{
+          background: '#F0F0F0', color: '#888888', border: '1px solid #E2E0DC',
+          borderRadius: 10, fontSize: 11, fontWeight: 700,
+          padding: '1px 7px', lineHeight: 1.6,
+        }}>{epics.length}</span>
+      </button>
+
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+          {epics.map(epic => (
+            <EpicCard key={epic.id} epic={epic} onClick={() => onSelect(epic)} dimmed />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Planning Page ──────────────────────────────────────────────────────
 
 const TABS = ['Epics', 'Voting Sessions']
@@ -383,12 +458,28 @@ export default function PlanningPage() {
     navigate('/planning')
   }
 
+  const handleArchive = async (id, archive) => {
+    const epic = epics.find(e => e.id === id)
+    if (!epic) return
+    setSaving(true)
+    await upsert({ ...epic, archived: archive })
+    setSaving(false)
+    setSelectedId(null)
+    setDraft(null)
+    setIsNew(false)
+    navigate('/planning')
+  }
+
   const handleBack = () => {
     setSelectedId(null)
     setDraft(null)
     setIsNew(false)
     navigate('/planning')
   }
+
+  // Split epics into active vs archived
+  const activeEpics   = epics.filter(e => !e.archived)
+  const archivedEpics = epics.filter(e =>  e.archived)
 
   // Tab bar (hidden when viewing an epic detail)
   const TabBar = () => (
@@ -430,6 +521,7 @@ export default function PlanningPage() {
               saving={saving}
               onSave={handleSave}
               onDelete={handleDelete}
+              onArchive={handleArchive}
               onBack={handleBack}
             />
           ) : loading ? (
@@ -438,12 +530,12 @@ export default function PlanningPage() {
             <>
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
                 <p style={{ fontSize: 13, color: '#AAAAAA', margin: 0 }}>
-                  {epics.length === 0 ? 'No epics yet' : `${epics.length} epic${epics.length !== 1 ? 's' : ''}`}
+                  {activeEpics.length === 0 ? 'No epics yet' : `${activeEpics.length} epic${activeEpics.length !== 1 ? 's' : ''}`}
                 </p>
                 <button onClick={handleNew} style={btn('#4FD0A5', '#1E1E1E')}>+ New Epic</button>
               </div>
 
-              {epics.length === 0 ? (
+              {activeEpics.length === 0 && archivedEpics.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 14, color: '#DDDDDD' }}>◎</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>No epics yet. Create one to get started.</p>
@@ -452,11 +544,15 @@ export default function PlanningPage() {
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {epics.map(epic => (
-                    <EpicCard key={epic.id} epic={epic} onClick={() => handleSelect(epic)} />
-                  ))}
-                </div>
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {activeEpics.map(epic => (
+                      <EpicCard key={epic.id} epic={epic} onClick={() => handleSelect(epic)} />
+                    ))}
+                  </div>
+
+                  <ArchivedSection epics={archivedEpics} onSelect={handleSelect} />
+                </>
               )}
             </>
           )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext, createContext, useMemo } from 'react'
 import { api } from '@/lib/api'
 
 // ── Shared constants ───────────────────────────────────────────────────
@@ -6,13 +6,22 @@ import { api } from '@/lib/api'
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 
 const TAG_PALETTE = [
-  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },
-  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },
-  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },
-  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },
-  { bg: '#FFF0F6', color: '#9D174D', border: '#FBCFE8' },
-  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
+  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },  // teal
+  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },  // blue
+  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },  // amber
+  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },  // purple
+  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },  // emerald
+  { bg: '#E0F2FE', color: '#0369A1', border: '#7DD3FC' },  // sky blue
+  { bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },  // yellow
+  { bg: '#F0FDF4', color: '#166534', border: '#86EFAC' },  // light green
+  { bg: '#F5F3FF', color: '#4C1D95', border: '#A78BFA' },  // deep purple
+  { bg: '#ECFEFF', color: '#164E63', border: '#67E8F9' },  // cyan
+  { bg: '#FFF7ED', color: '#9A3412', border: '#FDBA74' },  // orange
+  { bg: '#F0F9FF', color: '#1e3a5f', border: '#BAE6FD' },  // navy
 ]
+
+// Context that maps tag id → palette entry (set by IdeasPage, consumed by TagBadge)
+const TagColorContext = createContext({})
 
 function tagPalette(name) {
   let hash = 0
@@ -50,75 +59,147 @@ const fieldLabel = {
 
 const darkFieldLabel = { ...fieldLabel, color: '#777777' }
 
+// ── helpers ────────────────────────────────────────────────────────────
+
+function normalizeTags(idea) {
+  const assignments = idea.idea_tag_assignments || []
+  return assignments.map(a => a.idea_tags).filter(Boolean)
+}
+
+// ── Duplicate detection ────────────────────────────────────────────────
+
+const STOP = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with',
+  'by','from','is','are','was','were','be','been','have','has','had','do','does','did',
+  'will','would','could','should','may','might','must','can','it','its','this','that',
+  'we','our','you','your','they','their','i','my','how','what','when','where','why','which'])
+
+function keyWords(text) {
+  return new Set(
+    (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+      .filter(w => w.length > 2 && !STOP.has(w))
+  )
+}
+
+function jaccard(a, b) {
+  if (!a.size && !b.size) return 0
+  const inter = [...a].filter(x => b.has(x)).length
+  return inter / (a.size + b.size - inter)
+}
+
+// Returns Map<ideaId, Array<{id, title}>> of which ideas each idea is similar to
+function buildDuplicateMap(ideas) {
+  const map = new Map()
+  for (let i = 0; i < ideas.length; i++) {
+    for (let j = i + 1; j < ideas.length; j++) {
+      const a = ideas[i], b = ideas[j]
+      const tA = (a.title || '').toLowerCase().trim()
+      const tB = (b.title || '').toLowerCase().trim()
+      const isMatch = (tA && tA === tB) || jaccard(
+        keyWords((a.title || '') + ' ' + (a.description || '')),
+        keyWords((b.title || '') + ' ' + (b.description || ''))
+      ) >= 0.4
+      if (isMatch) {
+        if (!map.has(a.id)) map.set(a.id, [])
+        if (!map.has(b.id)) map.set(b.id, [])
+        map.get(a.id).push({ id: b.id, title: b.title })
+        map.get(b.id).push({ id: a.id, title: a.title })
+      }
+    }
+  }
+  return map
+}
+
 // ── TagBadge ───────────────────────────────────────────────────────────
 
-function TagBadge({ name }) {
+function TagBadge({ id, name, onRemove }) {
+  const colorMap = useContext(TagColorContext)
   if (!name) return null
-  const { bg, color, border } = tagPalette(name)
+  const { bg, color, border } = (id && colorMap[id]) ? colorMap[id] : tagPalette(name)
   return (
     <span style={{
       background: bg, color, border: `1px solid ${border}`,
       fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-      padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase', whiteSpace: 'nowrap',
+      padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
+      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
       {name}
+      {onRemove && (
+        <span
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          style={{ cursor: 'pointer', fontWeight: 900, fontSize: 13, lineHeight: 1, opacity: 0.7 }}
+        >×</span>
+      )}
     </span>
   )
 }
 
-// ── TagSelector ────────────────────────────────────────────────────────
+// ── MultiTagSelector ───────────────────────────────────────────────────
 
-function TagSelector({ value, tags, onSelect, onCreateAndSelect, dark }) {
+function MultiTagSelector({ selectedTags, allTags, onAdd, onRemove, onCreateAndAdd, dark }) {
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
   const field = dark ? darkField : lightField
+  const selectedIds = new Set(selectedTags.map(t => t.id))
+  const available = allTags.filter(t => !selectedIds.has(t.id))
 
   const handleCreate = async () => {
     const name = newName.trim()
     if (!name) return
-    const tag = await onCreateAndSelect(name)
-    onSelect(tag)
+    await onCreateAndAdd(name)
     setNewName('')
     setShowNew(false)
   }
 
-  if (showNew) {
-    return (
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          autoFocus
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleCreate()
-            if (e.key === 'Escape') { setShowNew(false); setNewName('') }
-          }}
-          placeholder="New tag name"
-          style={{ ...field, flex: 1 }}
-        />
-        <button onClick={handleCreate} style={btn('#4FD0A5', '#1E1E1E')}>Add</button>
-        <button
-          onClick={() => { setShowNew(false); setNewName('') }}
-          style={btn(dark ? '#2A2A2A' : '#F3F3F3', dark ? '#AAAAAA' : '#555555', dark ? '#383838' : '#DDDDDD')}
-        >Cancel</button>
-      </div>
-    )
-  }
-
   return (
-    <select
-      value={value || ''}
-      onChange={e => {
-        if (e.target.value === '__new__') { setShowNew(true); return }
-        const tag = tags.find(t => t.id === e.target.value)
-        onSelect(tag || null)
-      }}
-      style={{ ...field, background: dark ? '#2A2A2A' : '#FFFFFF' }}
-    >
-      <option value="">No tag</option>
-      {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-      <option value="__new__">+ Create new tag…</option>
-    </select>
+    <div>
+      {/* Selected tags as removable badges */}
+      {selectedTags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {selectedTags.map(tag => (
+            <TagBadge key={tag.id} id={tag.id} name={tag.name} onRemove={() => onRemove(tag)} />
+          ))}
+        </div>
+      )}
+
+      {/* Add more tags */}
+      {showNew ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleCreate()
+              if (e.key === 'Escape') { setShowNew(false); setNewName('') }
+            }}
+            placeholder="New tag name"
+            style={{ ...field, flex: 1 }}
+          />
+          <button onClick={handleCreate} style={btn('#4FD0A5', '#1E1E1E')}>Add</button>
+          <button
+            onClick={() => { setShowNew(false); setNewName('') }}
+            style={btn(dark ? '#2A2A2A' : '#F3F3F3', dark ? '#AAAAAA' : '#555555', dark ? '#383838' : '#DDDDDD')}
+          >Cancel</button>
+        </div>
+      ) : (
+        <select
+          value=""
+          onChange={e => {
+            const val = e.target.value
+            if (!val) return
+            if (val === '__new__') { setShowNew(true); return }
+            const tag = allTags.find(t => t.id === val)
+            if (tag) onAdd(tag)
+            e.target.value = ''
+          }}
+          style={{ ...field, background: dark ? '#2A2A2A' : '#FFFFFF' }}
+        >
+          <option value="">{selectedTags.length === 0 ? 'Add a tag…' : 'Add another tag…'}</option>
+          {available.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          <option value="__new__">+ Create new tag…</option>
+        </select>
+      )}
+    </div>
   )
 }
 
@@ -131,7 +212,7 @@ function useIdeas() {
   const load = useCallback(async () => {
     try {
       const data = await api.ideas.list()
-      setIdeas(data || [])
+      setIdeas((data || []).map(i => ({ ...i, tags: normalizeTags(i) })))
     } catch (e) {
       console.error('Failed to load ideas', e)
     } finally {
@@ -143,11 +224,12 @@ function useIdeas() {
 
   const upsert = async (idea) => {
     const saved = await api.ideas.upsert(idea)
+    const normalized = { ...saved, tags: normalizeTags(saved) }
     setIdeas(prev => {
-      const idx = prev.findIndex(i => i.id === saved.id)
-      return idx >= 0 ? prev.map(i => i.id === saved.id ? saved : i) : [saved, ...prev]
+      const idx = prev.findIndex(i => i.id === normalized.id)
+      return idx >= 0 ? prev.map(i => i.id === normalized.id ? normalized : i) : [normalized, ...prev]
     })
-    return saved
+    return normalized
   }
 
   const remove = async (id) => {
@@ -196,7 +278,6 @@ function useVoteSession() {
         const { votes: v } = await api.ideaVoteSessions.get(latest.id)
         setSession(latest)
         setVotes(v || [])
-        if (latest.status === 'closed') setShowResults(true)
       }
     } catch (e) {
       console.error('Failed to load vote session', e)
@@ -399,7 +480,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {topIdeas.map((idea, i) => {
             const count = tally[idea.id] || 0
-            const tagName = idea.idea_tags?.name
+            const ideaTags = idea.tags || []
             const isSelected = selected.has(idea.id)
 
             return (
@@ -426,9 +507,9 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
                 {/* Idea info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
-                    {tagName && <TagBadge name={tagName} />}
+                    {ideaTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
                   </div>
                   {idea.description && (
                     <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
@@ -468,39 +549,74 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, onClick }) {
+function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const [hovered, setHovered] = useState(false)
-  const tagName = idea.idea_tags?.name
+  const tags = idea.tags || []
   const preview = (idea.description || '').trim().slice(0, 140)
 
   return (
     <div
+      draggable
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       style={{
-        background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8,
-        padding: '20px 24px', cursor: 'pointer',
-        boxShadow: hovered ? '0 2px 16px rgba(0,0,0,0.07)' : 'none',
-        transition: 'box-shadow 0.15s',
+        background: '#FFFFFF',
+        border: dragOver ? '2px solid #4FD0A5' : isDuplicate ? '1px solid #FFD966' : '1px solid #E2E0DC',
+        borderRadius: 8,
+        padding: dragOver ? '19px 23px' : '20px 24px',
+        cursor: dragging ? 'grabbing' : 'grab',
+        boxShadow: hovered && !dragging ? '0 2px 16px rgba(0,0,0,0.07)' : 'none',
+        opacity: dragging ? 0.35 : 1,
+        transition: 'box-shadow 0.15s, opacity 0.15s, border 0.1s',
+        userSelect: 'none',
+        display: 'flex', flexDirection: 'column',
+        minWidth: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: preview ? 8 : 0 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
-          {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
-        </h3>
-        {tagName && <TagBadge name={tagName} />}
+      {/* Upper content — grows to fill cell, pushes tags to bottom */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* drag handle + title */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: preview ? 8 : 0 }}>
+          <span style={{
+            fontSize: 14, color: hovered ? '#BBBBBB' : '#DDDDDD',
+            lineHeight: 1.4, flexShrink: 0, marginTop: 2,
+            transition: 'color 0.15s', cursor: 'grab',
+          }}>⠿</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {isDuplicate && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: '#FFF8E6', color: '#996600', border: '1px solid #FFD966',
+                borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 5,
+              }}>
+                ⚠ Possible duplicate
+              </div>
+            )}
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              {idea.title || <span style={{ color: '#AAAAAA', fontStyle: 'italic' }}>Untitled Idea</span>}
+            </h3>
+          </div>
+        </div>
+
+        {preview && (
+          <p style={{ fontSize: 13, color: '#888888', margin: 0, lineHeight: 1.65 }}>
+            {preview}{(idea.description || '').length > 140 ? '…' : ''}
+          </p>
+        )}
       </div>
 
-      {preview && (
-        <p style={{ fontSize: 13, color: '#888888', margin: '8px 0 14px 0', lineHeight: 1.65 }}>
-          {preview}{(idea.description || '').length > 140 ? '…' : ''}
-        </p>
+      {/* Tags — always anchored to bottom */}
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 14 }}>
+          {tags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
+        </div>
       )}
-
-      <div style={{ fontSize: 12, color: '#CCCCCC', marginTop: preview ? 0 : 12 }}>
-        {new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-      </div>
     </div>
   )
 }
@@ -508,20 +624,33 @@ function IdeaCard({ idea, onClick }) {
 // ── CreateModal ────────────────────────────────────────────────────────
 
 function CreateModal({ tags, onCreateTag, onSave, onClose }) {
-  const [title, setTitle]       = useState('')
+  const [title, setTitle]             = useState('')
   const [description, setDescription] = useState('')
-  const [tag, setTag]           = useState(null)
-  const [saving, setSaving]     = useState(false)
+  const [selectedTags, setSelectedTags] = useState([])
+  const [saving, setSaving]           = useState(false)
 
   const handleSave = async () => {
     if (!title.trim() || saving) return
     setSaving(true)
     try {
-      await onSave({ id: crypto.randomUUID(), title: title.trim(), description, tagId: tag?.id || null })
+      await onSave({ id: crypto.randomUUID(), title: title.trim(), description, tagIds: selectedTags.map(t => t.id) })
       onClose()
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAddTag = (tag) => {
+    setSelectedTags(prev => prev.find(t => t.id === tag.id) ? prev : [...prev, tag])
+  }
+
+  const handleRemoveTag = (tag) => {
+    setSelectedTags(prev => prev.filter(t => t.id !== tag.id))
+  }
+
+  const handleCreateAndAdd = async (name) => {
+    const tag = await onCreateTag(name)
+    handleAddTag(tag)
   }
 
   return (
@@ -556,12 +685,13 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
         </div>
 
         <div style={{ marginBottom: 28 }}>
-          <label style={fieldLabel}>Tag</label>
-          <TagSelector
-            value={tag?.id || ''}
-            tags={tags}
-            onSelect={setTag}
-            onCreateAndSelect={onCreateTag}
+          <label style={fieldLabel}>Tags</label>
+          <MultiTagSelector
+            selectedTags={selectedTags}
+            allTags={tags}
+            onAdd={handleAddTag}
+            onRemove={handleRemoveTag}
+            onCreateAndAdd={handleCreateAndAdd}
             dark={false}
           />
         </div>
@@ -583,27 +713,38 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
-function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack }) {
-  const [idea, setIdea]     = useState(initial)
-  const [tag, setTag]       = useState(initial.idea_tags || null)
-  const [editing, setEditing] = useState(false)
+function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote, duplicates = [], onSelectIdea }) {
+  const [idea, setIdea]         = useState(initial)
+  const [selectedTags, setSelectedTags] = useState(initial.tags || [])
+  const [editing, setEditing]   = useState(false)
 
   const handleSave = async () => {
-    await onSave({ ...idea, tagId: tag?.id || null })
+    await onSave({ ...idea, tagIds: selectedTags.map(t => t.id) })
     setEditing(false)
   }
 
   const handleCancel = () => {
     setIdea(initial)
-    setTag(initial.idea_tags || null)
+    setSelectedTags(initial.tags || [])
     setEditing(false)
+  }
+
+  const handleAddTag = (tag) => {
+    setSelectedTags(prev => prev.find(t => t.id === tag.id) ? prev : [...prev, tag])
+  }
+
+  const handleRemoveTag = (tag) => {
+    setSelectedTags(prev => prev.filter(t => t.id !== tag.id))
+  }
+
+  const handleCreateAndAdd = async (name) => {
+    const tag = await onCreateTag(name)
+    handleAddTag(tag)
   }
 
   const handleDelete = () => {
     if (window.confirm('Delete this idea? This cannot be undone.')) onDelete(idea.id)
   }
-
-  const tagName = tag?.name
 
   return (
     <div>
@@ -625,6 +766,18 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <>
               <button onClick={handleDelete} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Delete</button>
               <button onClick={() => setEditing(true)} style={btn('#1E1E1E', '#FFFFFF')}>Edit</button>
+              {onPromote && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Move "${idea.title}" to Planning? It will be converted to an epic and removed from Ideas.`)) {
+                      onPromote(idea.id)
+                    }
+                  }}
+                  style={btn('#4FD0A5', '#1E1E1E')}
+                >
+                  → Move to Planning
+                </button>
+              )}
             </>
           )}
         </div>
@@ -641,12 +794,13 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
               style={{ ...darkField, fontSize: 20, fontWeight: 600, marginBottom: 18 }}
             />
             <div>
-              <label style={darkFieldLabel}>Tag</label>
-              <TagSelector
-                value={tag?.id || ''}
-                tags={tags}
-                onSelect={setTag}
-                onCreateAndSelect={onCreateTag}
+              <label style={darkFieldLabel}>Tags</label>
+              <MultiTagSelector
+                selectedTags={selectedTags}
+                allTags={tags}
+                onAdd={handleAddTag}
+                onRemove={handleRemoveTag}
+                onCreateAndAdd={handleCreateAndAdd}
                 dark={true}
               />
             </div>
@@ -656,13 +810,48 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 600, margin: '0 0 14px 0', lineHeight: 1.3 }}>
               {idea.title || <span style={{ color: '#555555', fontStyle: 'italic' }}>Untitled Idea</span>}
             </h2>
-            {tagName
-              ? <TagBadge name={tagName} />
-              : <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tag</span>
-            }
+            {selectedTags.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {selectedTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
+              </div>
+            ) : (
+              <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tags</span>
+            )}
           </>
         )}
       </div>
+
+      {/* Possible duplicates panel */}
+      {duplicates.length > 0 && (
+        <div style={{ marginBottom: 20, border: '1px solid #FFD966', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: '#FFF8E6', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13 }}>⚠</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#996600', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Possible duplicate{duplicates.length > 1 ? 's' : ''} detected
+            </span>
+          </div>
+          <div style={{ background: '#FFFDF5', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {duplicates.map(d => (
+              <button
+                key={d.id}
+                onClick={() => onSelectIdea && onSelectIdea(d.id)}
+                style={{
+                  background: '#FFFFFF', border: '1px solid #FFD966', borderRadius: 6,
+                  padding: '9px 14px', textAlign: 'left', cursor: 'pointer',
+                  fontFamily: FONT, fontSize: 13, color: '#1E1E1E', fontWeight: 500,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#FFF8E6'}
+                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+              >
+                <span>{d.title || <em style={{ color: '#AAAAAA' }}>Untitled</em>}</span>
+                <span style={{ fontSize: 11, color: '#996600', fontWeight: 700, flexShrink: 0 }}>View →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Description section */}
       <div>
@@ -692,9 +881,7 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
 
 function VoteHistoryList({ sessions, onSelect }) {
   if (sessions.length === 0) return null
-
-  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
+  const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return (
     <div style={{ marginTop: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
@@ -719,35 +906,21 @@ function VoteHistoryList({ sessions, onSelect }) {
               onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'}
               onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
             >
-              {/* Date */}
               <div style={{ flexShrink: 0, minWidth: 100 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1E1E1E' }}>{fmt(s.closed_at || s.created_at)}</div>
                 <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{voters} voter{voters !== 1 ? 's' : ''}</div>
               </div>
-
-              {/* Top idea preview */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                {topIdea ? (
-                  <span style={{ fontSize: 13, color: '#555555' }}>
-                    Top: <span style={{ fontWeight: 600, color: '#1E1E1E' }}>{topIdea.title}</span>
-                    <span style={{ color: '#AAAAAA' }}> · {topIdea.vote_count} vote{topIdea.vote_count !== 1 ? 's' : ''}</span>
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 13, color: '#AAAAAA', fontStyle: 'italic' }}>No votes cast</span>
-                )}
+                {topIdea
+                  ? <span style={{ fontSize: 13, color: '#555555' }}>Top: <strong style={{ color: '#1E1E1E' }}>{topIdea.title}</strong> <span style={{ color: '#AAAAAA' }}>· {topIdea.vote_count} vote{topIdea.vote_count !== 1 ? 's' : ''}</span></span>
+                  : <span style={{ fontSize: 13, color: '#AAAAAA', fontStyle: 'italic' }}>No votes cast</span>
+                }
               </div>
-
-              {/* Promoted badge */}
               {promoted > 0 && (
-                <span style={{
-                  background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5',
-                  borderRadius: 5, padding: '3px 10px', fontSize: 11, fontWeight: 700,
-                  flexShrink: 0,
-                }}>
+                <span style={{ background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5', borderRadius: 5, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                   {promoted} promoted
                 </span>
               )}
-
               <span style={{ color: '#CCCCCC', fontSize: 16, flexShrink: 0 }}>›</span>
             </div>
           )
@@ -761,47 +934,38 @@ function VoteHistoryList({ sessions, onSelect }) {
 
 function VoteHistoryDetail({ session, onBack }) {
   const [votes, setVotes] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loadingVotes, setLoadingVotes] = useState(true)
 
   useEffect(() => {
     api.ideaVoteSessions.get(session.id)
       .then(({ votes: v }) => setVotes(v || []))
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => setLoadingVotes(false))
   }, [session.id])
 
   const snap = session.result_snapshot || {}
   const ideas = snap.ideas || []
   const promoted = new Set(session.promoted_idea_ids || [])
   const rankColors = ['#4FD0A5', '#93C5FD', '#FFD966', '#AAAAAA', '#AAAAAA']
-  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-
-  // Build a title lookup from snapshot for voter breakdown
-  const ideaTitleById = {}
-  ideas.forEach(i => { ideaTitleById[i.id] = i.title })
+  const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const ideaTitleById = Object.fromEntries(ideas.map(i => [i.id, i.title]))
 
   return (
     <div>
-      {/* Back */}
-      <button
-        onClick={onBack}
-        style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: FONT, marginBottom: 28 }}
-      >
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: FONT, marginBottom: 28 }}>
         ← Vote History
       </button>
 
-      {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1E1E1E', margin: '0 0 6px 0' }}>
           Session — {fmt(session.closed_at || session.created_at)}
         </h2>
         <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
           {snap.total_voters ?? votes.length} participant{(snap.total_voters ?? votes.length) !== 1 ? 's' : ''}
-          {promoted.size > 0 ? ` · ${promoted.size} idea${promoted.size !== 1 ? 's' : ''} promoted to Planning` : ''}
+          {promoted.size > 0 ? ` · ${promoted.size} idea${promoted.size !== 1 ? 's' : ''} moved to Planning` : ''}
         </p>
       </div>
 
-      {/* Results */}
       {ideas.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
@@ -820,29 +984,16 @@ function VoteHistoryDetail({ session, onBack }) {
                   borderRadius: 8, padding: '16px 22px',
                   display: 'flex', alignItems: 'center', gap: 16,
                 }}>
-                  {/* Rank */}
-                  <div style={{
-                    width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                    background: rankColors[i] || '#E2E0DC',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 800, color: '#1E1E1E',
-                  }}>{i + 1}</div>
-
-                  {/* Title + tag */}
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: rankColors[i] || '#E2E0DC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#1E1E1E' }}>{i + 1}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
                       {idea.tag_name && <TagBadge name={idea.tag_name} />}
                       {wasPromoted && (
-                        <span style={{
-                          background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5',
-                          borderRadius: 4, padding: '2px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-                        }}>MOVED TO PLANNING</span>
+                        <span style={{ background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5', borderRadius: 4, padding: '2px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>MOVED TO PLANNING</span>
                       )}
                     </div>
                   </div>
-
-                  {/* Vote count */}
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: '#4FD0A5', lineHeight: 1 }}>{idea.vote_count}</div>
                     <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>vote{idea.vote_count !== 1 ? 's' : ''}</div>
@@ -852,11 +1003,8 @@ function VoteHistoryDetail({ session, onBack }) {
             })}
           </div>
 
-          {/* Voter breakdown */}
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px 0' }}>
-            Who voted for what
-          </h3>
-          {loading ? (
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px 0' }}>Who voted for what</h3>
+          {loadingVotes ? (
             <p style={{ fontSize: 13, color: '#AAAAAA' }}>Loading…</p>
           ) : votes.length === 0 ? (
             <p style={{ fontSize: 13, color: '#AAAAAA' }}>No votes recorded.</p>
@@ -865,39 +1013,22 @@ function VoteHistoryDetail({ session, onBack }) {
               {votes.map(v => {
                 const votedTitles = (v.idea_ids || []).map(id => ideaTitleById[id] || id)
                 return (
-                  <div key={v.id} style={{
-                    background: '#FFFFFF', border: '1px solid #E2E0DC',
-                    borderRadius: 8, padding: '14px 18px',
-                    display: 'flex', alignItems: 'flex-start', gap: 16,
-                  }}>
-                    {/* Avatar */}
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                      background: '#F3F3F3', border: '1px solid #E2E0DC',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, fontWeight: 700, color: '#888888',
-                    }}>
+                  <div key={v.id} style={{ background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8, padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: '#F3F3F3', border: '1px solid #E2E0DC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#888888' }}>
                       {(v.email || '?')[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#1E1E1E', marginBottom: 8 }}>{v.email}</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {votedTitles.map((title, idx) => (
-                          <span key={idx} style={{
-                            background: '#F8F7F6', border: '1px solid #E2E0DC',
-                            borderRadius: 5, padding: '3px 10px', fontSize: 12, color: '#555555',
-                          }}>
-                            👍 {title}
-                          </span>
-                        ))}
-                        {votedTitles.length === 0 && (
-                          <span style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic' }}>No selections</span>
-                        )}
+                        {votedTitles.length > 0
+                          ? votedTitles.map((title, idx) => (
+                              <span key={idx} style={{ background: '#F8F7F6', border: '1px solid #E2E0DC', borderRadius: 5, padding: '3px 10px', fontSize: 12, color: '#555555' }}>👍 {title}</span>
+                            ))
+                          : <span style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic' }}>No selections</span>
+                        }
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: '#AAAAAA', flexShrink: 0 }}>
-                      {votedTitles.length}/5
-                    </div>
+                    <div style={{ fontSize: 12, color: '#AAAAAA', flexShrink: 0 }}>{votedTitles.length}/5</div>
                   </div>
                 )
               })}
@@ -919,7 +1050,8 @@ export default function IdeasPage() {
     startSession, closeSession, refreshVotes, dismissResults,
   } = useVoteSession()
 
-  const [activeTag, setActiveTag]           = useState(null)
+  const [activeTags, setActiveTags]         = useState(new Set())
+  const [searchQuery, setSearchQuery]       = useState('')
   const [selectedId, setSelectedId]         = useState(null)
   const [showCreate, setShowCreate]         = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
@@ -927,7 +1059,7 @@ export default function IdeasPage() {
   const [copied, setCopied]                 = useState(false)
   const [startingVote, setStartingVote]     = useState(false)
 
-  // History
+  // Vote history
   const [closedSessions, setClosedSessions] = useState([])
   const [historySession, setHistorySession] = useState(null)
 
@@ -935,13 +1067,95 @@ export default function IdeasPage() {
     api.ideaVoteSessions.list()
       .then(all => setClosedSessions((all || []).filter(s => s.status === 'closed')))
       .catch(() => {})
-  }, [showResults]) // re-fetch when results are dismissed (session just closed)
+  }, [showResults])
+
+  // Drag-to-rank state
+  const [order, setOrder]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ideas-order') || 'null') } catch { return null }
+  })
+  const [draggedId, setDraggedId]   = useState(null)
+  const [dragOverId, setDragOverId] = useState(null)
+
+  // Keep order in sync as ideas are added / removed
+  useEffect(() => {
+    if (ideas.length === 0) return
+    setOrder(prev => {
+      const base = prev || []
+      const existingIds = new Set(ideas.map(i => i.id))
+      // drop deleted ideas, append new ones at the end
+      const pruned  = base.filter(id => existingIds.has(id))
+      const newOnes = ideas.map(i => i.id).filter(id => !pruned.includes(id))
+      const next = [...pruned, ...newOnes]
+      localStorage.setItem('ideas-order', JSON.stringify(next))
+      return next
+    })
+  }, [ideas])
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
-  const usedTagIds = [...new Set(ideas.map(i => i.tag_id).filter(Boolean))]
+  const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
-  const filtered   = activeTag ? ideas.filter(i => i.tag_id === activeTag) : ideas
+
+  // Potential duplicates — computed once per ideas change
+  const duplicateMap = useMemo(() => buildDuplicateMap(ideas), [ideas])
+  const duplicateIds = useMemo(() => new Set(duplicateMap.keys()), [duplicateMap])
+
+  // Assign each tag a unique color by its index in the sorted tags list
+  const tagColorMap = useMemo(() => {
+    const sorted = [...tags].sort((a, b) => a.name.localeCompare(b.name))
+    const map = {}
+    sorted.forEach((tag, i) => { map[tag.id] = TAG_PALETTE[i % TAG_PALETTE.length] })
+    return map
+  }, [tags])
+  const filtered = (activeTags.size > 0
+    ? ideas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
+    : ideas
+  ).filter(i => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return true
+    return (i.title || '').toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q)
+  })
+
+  function toggleTag(id) {
+    setActiveTags(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // Apply saved order to the filtered list
+  const sortedFiltered = useMemo(() => {
+    if (!order) return filtered
+    return [...filtered].sort((a, b) => {
+      const ai = order.indexOf(a.id)
+      const bi = order.indexOf(b.id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+  }, [filtered, order])
+
+  function handleDragStart(id) { setDraggedId(id) }
+  function handleDragOver(e, id) { e.preventDefault(); if (id !== dragOverId) setDragOverId(id) }
+  function handleDrop(targetId) {
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return }
+    setOrder(prev => {
+      const base = prev || ideas.map(i => i.id)
+      const from = base.indexOf(draggedId)
+      const to   = base.indexOf(targetId)
+      if (from === -1 || to === -1) return prev
+      const next = [...base]
+      next.splice(from, 1)
+      next.splice(to, 0, draggedId)
+      localStorage.setItem('ideas-order', JSON.stringify(next))
+      return next
+    })
+    setDraggedId(null)
+    setDragOverId(null)
+  }
+  function handleDragEnd() { setDraggedId(null); setDragOverId(null) }
 
   // Auto-refresh votes every 20s when session is open
   useEffect(() => {
@@ -993,7 +1207,14 @@ export default function IdeasPage() {
     dismissResults()
   }
 
+  const handlePromoteSingle = async (ideaId) => {
+    await api.promoteIdeas([ideaId], session?.id)
+    removeMany([ideaId])
+    setSelectedId(null)
+  }
+
   return (
+    <TagColorContext.Provider value={tagColorMap}>
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 32px' }}>
 
@@ -1017,6 +1238,9 @@ export default function IdeasPage() {
             onSave={handleSave}
             onDelete={handleDelete}
             onBack={() => setSelectedId(null)}
+            onPromote={handlePromoteSingle}
+            duplicates={duplicateMap.get(selected.id) || []}
+            onSelectIdea={setSelectedId}
           />
 
         /* ── Results view (after vote closed) ── */
@@ -1049,27 +1273,60 @@ export default function IdeasPage() {
               <ParticipantPanel votes={votes} onRefresh={refreshVotes} />
             )}
 
+            {/* Search bar */}
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <span style={{
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 15, color: '#BBBBBB', pointerEvents: 'none',
+              }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search ideas by title or description…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  border: '1px solid #E2E0DC', borderRadius: 8,
+                  padding: '10px 36px 10px 38px', fontSize: 14,
+                  fontFamily: FONT, color: '#1E1E1E', background: '#FFFFFF',
+                  outline: 'none',
+                }}
+                onFocus={e => { e.target.style.borderColor = '#4FD0A5' }}
+                onBlur={e => { e.target.style.borderColor = '#E2E0DC' }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 16, color: '#AAAAAA', lineHeight: 1, padding: 2,
+                  }}
+                >×</button>
+              )}
+            </div>
+
             {/* Toolbar: tag filters + action buttons */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
-                  onClick={() => setActiveTag(null)}
+                  onClick={() => setActiveTags(new Set())}
                   style={{
-                    background: activeTag === null ? '#1E1E1E' : '#FFFFFF',
-                    color: activeTag === null ? '#FFFFFF' : '#555555',
-                    border: `1px solid ${activeTag === null ? '#1E1E1E' : '#E2E0DC'}`,
+                    background: activeTags.size === 0 ? '#1E1E1E' : '#FFFFFF',
+                    color: activeTags.size === 0 ? '#FFFFFF' : '#555555',
+                    border: `1px solid ${activeTags.size === 0 ? '#1E1E1E' : '#E2E0DC'}`,
                     borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s',
                   }}
                 >All</button>
 
                 {usedTags.map(t => {
-                  const { bg, color, border } = tagPalette(t.name)
-                  const isActive = activeTag === t.id
+                  const { bg, color, border } = tagColorMap[t.id] || tagPalette(t.name)
+                  const isActive = activeTags.has(t.id)
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setActiveTag(isActive ? null : t.id)}
+                      onClick={() => toggleTag(t.id)}
                       style={{
                         background: isActive ? '#1E1E1E' : bg,
                         color: isActive ? '#FFFFFF' : color,
@@ -1084,7 +1341,7 @@ export default function IdeasPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                {!session && !loadingSession && (
+                {(!session || session.status === 'closed') && !loadingSession && (
                   <button
                     onClick={handleStartVoting}
                     disabled={startingVote}
@@ -1100,20 +1357,20 @@ export default function IdeasPage() {
             {/* Count */}
             <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 20px 0' }}>
               {loading ? 'Loading…' : filtered.length === 0
-                ? (activeTag ? 'No ideas with this tag' : 'No ideas yet')
+                ? (searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search' : 'No ideas yet')
                 : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
               }
             </p>
 
-            {/* Cards */}
+            {/* Cards + history */}
             {!loading && (
               filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 14 }}>💡</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>
-                    {activeTag ? 'No ideas with this tag.' : 'No ideas yet. Add the first one.'}
+                    {searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search.' : 'No ideas yet. Add the first one.'}
                   </p>
-                  {!activeTag && (
+                  {!searchQuery.trim() && activeTags.size === 0 && (
                     <button
                       onClick={() => setShowCreate(true)}
                       style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}
@@ -1124,8 +1381,19 @@ export default function IdeasPage() {
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                  {filtered.map(idea => (
-                    <IdeaCard key={idea.id} idea={idea} onClick={() => setSelectedId(idea.id)} />
+                  {sortedFiltered.map(idea => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      onClick={() => !draggedId && setSelectedId(idea.id)}
+                      dragging={draggedId === idea.id}
+                      dragOver={dragOverId === idea.id && draggedId !== idea.id}
+                      isDuplicate={duplicateIds.has(idea.id)}
+                      onDragStart={() => handleDragStart(idea.id)}
+                      onDragOver={e => handleDragOver(e, idea.id)}
+                      onDrop={() => handleDrop(idea.id)}
+                      onDragEnd={handleDragEnd}
+                    />
                   ))}
                 </div>
               )
@@ -1133,10 +1401,7 @@ export default function IdeasPage() {
 
             {/* Vote history */}
             {!loading && (
-              <VoteHistoryList
-                sessions={closedSessions}
-                onSelect={setHistorySession}
-              />
+              <VoteHistoryList sessions={closedSessions} onSelect={setHistorySession} />
             )}
           </>
         )}
@@ -1151,5 +1416,6 @@ export default function IdeasPage() {
         />
       )}
     </div>
+    </TagColorContext.Provider>
   )
 }

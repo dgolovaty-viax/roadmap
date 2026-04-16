@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 
-// Full viax logo SVG (canonical paths from brand assets)
 function ViaxLogo() {
   return (
     <svg width="90" height="24" viewBox="0 0 112 30" fill="none" xmlns="http://www.w3.org/2000/svg">

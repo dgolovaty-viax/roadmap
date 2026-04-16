@@ -6,22 +6,36 @@ const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
 const MAX_VOTES = 5
 
 const TAG_PALETTE = [
-  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },
-  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },
-  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },
-  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },
-  { bg: '#FFF0F6', color: '#9D174D', border: '#FBCFE8' },
-  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
+  { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' },  // teal
+  { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' },  // blue
+  { bg: '#FFF8E6', color: '#996600', border: '#FFD966' },  // amber
+  { bg: '#F3F0FF', color: '#5B21B6', border: '#C4B5FD' },  // purple
+  { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },  // emerald
+  { bg: '#E0F2FE', color: '#0369A1', border: '#7DD3FC' },  // sky blue
+  { bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },  // yellow
+  { bg: '#F0FDF4', color: '#166534', border: '#86EFAC' },  // light green
+  { bg: '#F5F3FF', color: '#4C1D95', border: '#A78BFA' },  // deep purple
+  { bg: '#ECFEFF', color: '#164E63', border: '#67E8F9' },  // cyan
+  { bg: '#FFF7ED', color: '#9A3412', border: '#FDBA74' },  // orange
+  { bg: '#F0F9FF', color: '#1e3a5f', border: '#BAE6FD' },  // navy
 ]
-function tagPalette(name) {
-  let hash = 0
-  for (const c of (name || '')) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff
-  return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length]
+
+// Build a stable id→color map from all unique tags across all ideas (sorted by name)
+function buildTagColorMap(ideas) {
+  const seen = new Map()
+  for (const idea of ideas) {
+    const tags = (idea.idea_tag_assignments || []).map(a => a.idea_tags).filter(Boolean)
+    for (const t of tags) { if (!seen.has(t.id)) seen.set(t.id, t.name) }
+  }
+  const sorted = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  const map = {}
+  sorted.forEach(([id], i) => { map[id] = TAG_PALETTE[i % TAG_PALETTE.length] })
+  return map
 }
 
-function TagBadge({ name }) {
+function TagBadge({ id, name, colorMap }) {
   if (!name) return null
-  const { bg, color, border } = tagPalette(name)
+  const { bg, color, border } = (id && colorMap?.[id]) ? colorMap[id] : TAG_PALETTE[0]
   return (
     <span style={{
       background: bg, color, border: `1px solid ${border}`,
@@ -85,7 +99,7 @@ function EmailStep({ email, setEmail, onJoin }) {
 
 // ── Voting step ────────────────────────────────────────────────────────
 
-function VotingStep({ ideas, selected, onToggle, onSubmit, submitting }) {
+function VotingStep({ ideas, selected, onToggle, onSubmit, submitting, colorMap }) {
   const remaining = MAX_VOTES - selected.size
 
   return (
@@ -137,7 +151,7 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting }) {
         {ideas.map(idea => {
           const isSelected = selected.has(idea.id)
           const isDisabled = !isSelected && selected.size >= MAX_VOTES
-          const tagName = idea.idea_tags?.name
+          const ideaTags = (idea.idea_tag_assignments || []).map(a => a.idea_tags).filter(Boolean)
 
           return (
             <div
@@ -157,7 +171,11 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting }) {
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
                     {idea.title}
                   </h3>
-                  {tagName && <TagBadge name={tagName} />}
+                  {ideaTags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {ideaTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} colorMap={colorMap} />)}
+                    </div>
+                  )}
                 </div>
                 {idea.description && (
                   <p style={{ fontSize: 12, color: '#888888', margin: 0, lineHeight: 1.6 }}>
@@ -297,10 +315,12 @@ export default function IdeaVotePage() {
     )
   }
 
+  const colorMap = buildTagColorMap(ideas)
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 72, fontFamily: FONT }}>
       {step === 'email'  && <EmailStep  email={email} setEmail={setEmail} onJoin={handleJoin} />}
-      {step === 'voting' && <VotingStep ideas={ideas} selected={selected} onToggle={toggleIdea} onSubmit={handleSubmit} submitting={submitting} />}
+      {step === 'voting' && <VotingStep ideas={ideas} selected={selected} onToggle={toggleIdea} onSubmit={handleSubmit} submitting={submitting} colorMap={colorMap} />}
       {step === 'done'   && <DoneStep   selected={selected} ideas={ideas} />}
     </div>
   )
