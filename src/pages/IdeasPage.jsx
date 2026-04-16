@@ -941,15 +941,25 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
 
 // ── Vote History List ──────────────────────────────────────────────────
 
-function VoteHistoryList({ sessions, onSelect }) {
-  if (sessions.length === 0) return null
+function VoteHistoryList({ sessions, onSelect, onBack }) {
   const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return (
-    <div style={{ marginTop: 56 }}>
+    <div>
+      {onBack && (
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: FONT, marginBottom: 28 }}>
+          ← Ideas
+        </button>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1E1E1E', margin: 0 }}>Vote History</h2>
-        <span style={{ fontSize: 12, color: '#AAAAAA' }}>{sessions.length} session{sessions.length !== 1 ? 's' : ''}</span>
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1E1E1E', margin: 0 }}>Vote History</h2>
+        <span style={{ fontSize: 13, color: '#AAAAAA' }}>{sessions.length} session{sessions.length !== 1 ? 's' : ''}</span>
       </div>
+      {sessions.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🗳</div>
+          <p style={{ fontSize: 15, color: '#AAAAAA' }}>No closed voting sessions yet.</p>
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sessions.map(s => {
           const snap = s.result_snapshot || {}
@@ -994,7 +1004,7 @@ function VoteHistoryList({ sessions, onSelect }) {
 
 // ── Vote History Detail ────────────────────────────────────────────────
 
-function VoteHistoryDetail({ session, onBack }) {
+function VoteHistoryDetail({ session, onBack, onBackLabel }) {
   const [votes, setVotes] = useState([])
   const [loadingVotes, setLoadingVotes] = useState(true)
 
@@ -1015,7 +1025,7 @@ function VoteHistoryDetail({ session, onBack }) {
   return (
     <div>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: FONT, marginBottom: 28 }}>
-        ← Vote History
+        {onBackLabel || '← Vote History'}
       </button>
 
       <div style={{ marginBottom: 32 }}>
@@ -1123,6 +1133,7 @@ export default function IdeasPage() {
 
   // Vote history
   const [closedSessions, setClosedSessions] = useState([])
+  const [showHistory, setShowHistory]       = useState(false)
   const [historySession, setHistorySession] = useState(null)
   const [refreshTick, setRefreshTick]       = useState(0)
 
@@ -1283,13 +1294,40 @@ export default function IdeasPage() {
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 32px' }}>
 
-        <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: '0 0 28px 0', letterSpacing: '-0.5px' }}>Ideas</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: 0, letterSpacing: '-0.5px' }}>Ideas</h1>
+          {closedSessions.length > 0 && !showHistory && !historySession && (
+            <button
+              onClick={() => setShowHistory(true)}
+              style={{
+                background: 'none', border: '1px solid #E2E0DC', borderRadius: 7,
+                padding: '7px 16px', fontSize: 13, fontWeight: 500, color: '#555555',
+                cursor: 'pointer', fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 7,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#4FD0A5'; e.currentTarget.style.color = '#1E1E1E'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E0DC'; e.currentTarget.style.color = '#555555'; }}
+            >
+              <span style={{ fontSize: 15 }}>🗳</span> Vote History
+              <span style={{ background: '#F0F0EE', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700, color: '#888888' }}>{closedSessions.length}</span>
+            </button>
+          )}
+        </div>
 
-        {/* ── History detail view ── */}
-        {historySession ? (
+        {/* ── History list screen ── */}
+        {showHistory && !historySession ? (
+          <VoteHistoryList
+            sessions={closedSessions}
+            onSelect={setHistorySession}
+            onBack={() => setShowHistory(false)}
+          />
+
+        /* ── History detail screen ── */
+        ) : historySession ? (
           <VoteHistoryDetail
             session={historySession}
-            onBack={() => setHistorySession(null)}
+            onBack={() => { setHistorySession(null); setShowHistory(true); }}
+            onBackLabel="← Vote History"
           />
 
         /* ── Idea detail view ── */
@@ -1464,10 +1502,6 @@ export default function IdeasPage() {
               )
             )}
 
-            {/* Vote history */}
-            {!loading && (
-              <VoteHistoryList sessions={closedSessions} onSelect={setHistorySession} />
-            )}
           </>
         )}
       </div>
