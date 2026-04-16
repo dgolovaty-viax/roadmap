@@ -49,7 +49,7 @@ export const api = {
     vote:   (id, email, ideaIds)     => request('POST', `/api/idea-vote-sessions/${id}/vote`, { email, ideaIds }),
   },
 
-  promoteIdeas: (ideaIds) => request('POST', '/api/promote-ideas', { ideaIds }),
+  promoteIdeas: (ideaIds, sessionId) => request('POST', '/api/promote-ideas', { ideaIds, sessionId }),
 
   // ── Sessions ────────────────────────────────────────────────────────
 

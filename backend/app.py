@@ -295,7 +295,38 @@ def get_idea_vote_session(session_id):
 
 @app.route("/api/idea-vote-sessions/<session_id>/close", methods=["POST"])
 def close_idea_vote_session(session_id):
-    supabase.table("idea_vote_sessions").update({"status": "closed"}).eq("id", session_id).execute()
+    # Tally votes across all idea_votes for this session
+    votes_res = supabase.table("idea_votes").select("*").eq("session_id", session_id).execute()
+    votes     = votes_res.data or []
+
+    tally = {}
+    for v in votes:
+        for iid in (v.get("idea_ids") or []):
+            tally[iid] = tally.get(iid, 0) + 1
+
+    # Resolve idea titles for snapshot
+    snapshot_ideas = []
+    if tally:
+        ids_list = list(tally.keys())
+        ideas_res = supabase.table("ideas").select("id, title, idea_tags(name)").in_("id", ids_list).execute()
+        for idea in (ideas_res.data or []):
+            snapshot_ideas.append({
+                "id":        idea["id"],
+                "title":     idea.get("title", ""),
+                "tag_name":  (idea.get("idea_tags") or {}).get("name"),
+                "vote_count": tally.get(idea["id"], 0),
+            })
+        snapshot_ideas.sort(key=lambda x: x["vote_count"], reverse=True)
+
+    result_snapshot = {
+        "ideas":        snapshot_ideas,
+        "total_voters": len(votes),
+    }
+
+    supabase.table("idea_vote_sessions").update({
+        "status":          "closed",
+        "result_snapshot": result_snapshot,
+    }).eq("id", session_id).execute()
     return jsonify({"ok": True})
 
 
@@ -320,9 +351,10 @@ def submit_idea_vote(session_id):
 
 @app.route("/api/promote-ideas", methods=["POST"])
 def promote_ideas():
-    body     = request.json
-    idea_ids = body.get("ideaIds", [])
-    promoted = []
+    body       = request.json
+    idea_ids   = body.get("ideaIds", [])
+    session_id = body.get("sessionId")
+    promoted   = []
     for idea_id in idea_ids:
         idea_res = supabase.table("ideas").select("*, idea_tags(id, name)").eq("id", idea_id).single().execute()
         if not idea_res.data:
@@ -345,7 +377,15 @@ def promote_ideas():
         }
         supabase.table("epics").insert(epic).execute()
         supabase.table("ideas").delete().eq("id", idea_id).execute()
-        promoted.append(epic["id"])
+        promoted.append(idea_id)
+
+    # Record which idea IDs were promoted on the session
+    if session_id and promoted:
+        sess_res = supabase.table("idea_vote_sessions").select("promoted_idea_ids").eq("id", session_id).single().execute()
+        existing = (sess_res.data or {}).get("promoted_idea_ids") or []
+        merged   = list(set(existing + promoted))
+        supabase.table("idea_vote_sessions").update({"promoted_idea_ids": merged}).eq("id", session_id).execute()
+
     return jsonify({"ok": True, "promoted": promoted})
 
 

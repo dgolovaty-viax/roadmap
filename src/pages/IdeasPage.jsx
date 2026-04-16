@@ -688,6 +688,227 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
   )
 }
 
+// ── Vote History List ──────────────────────────────────────────────────
+
+function VoteHistoryList({ sessions, onSelect }) {
+  if (sessions.length === 0) return null
+
+  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+  return (
+    <div style={{ marginTop: 56 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1E1E1E', margin: 0 }}>Vote History</h2>
+        <span style={{ fontSize: 12, color: '#AAAAAA' }}>{sessions.length} session{sessions.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {sessions.map(s => {
+          const snap = s.result_snapshot || {}
+          const promoted = (s.promoted_idea_ids || []).length
+          const voters = snap.total_voters ?? 0
+          const topIdea = (snap.ideas || [])[0]
+          return (
+            <div
+              key={s.id}
+              onClick={() => onSelect(s)}
+              style={{
+                background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 8,
+                padding: '16px 22px', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', gap: 20, transition: 'box-shadow 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            >
+              {/* Date */}
+              <div style={{ flexShrink: 0, minWidth: 100 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1E1E1E' }}>{fmt(s.closed_at || s.created_at)}</div>
+                <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>{voters} voter{voters !== 1 ? 's' : ''}</div>
+              </div>
+
+              {/* Top idea preview */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {topIdea ? (
+                  <span style={{ fontSize: 13, color: '#555555' }}>
+                    Top: <span style={{ fontWeight: 600, color: '#1E1E1E' }}>{topIdea.title}</span>
+                    <span style={{ color: '#AAAAAA' }}> · {topIdea.vote_count} vote{topIdea.vote_count !== 1 ? 's' : ''}</span>
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 13, color: '#AAAAAA', fontStyle: 'italic' }}>No votes cast</span>
+                )}
+              </div>
+
+              {/* Promoted badge */}
+              {promoted > 0 && (
+                <span style={{
+                  background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5',
+                  borderRadius: 5, padding: '3px 10px', fontSize: 11, fontWeight: 700,
+                  flexShrink: 0,
+                }}>
+                  {promoted} promoted
+                </span>
+              )}
+
+              <span style={{ color: '#CCCCCC', fontSize: 16, flexShrink: 0 }}>›</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Vote History Detail ────────────────────────────────────────────────
+
+function VoteHistoryDetail({ session, onBack }) {
+  const [votes, setVotes] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.ideaVoteSessions.get(session.id)
+      .then(({ votes: v }) => setVotes(v || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [session.id])
+
+  const snap = session.result_snapshot || {}
+  const ideas = snap.ideas || []
+  const promoted = new Set(session.promoted_idea_ids || [])
+  const rankColors = ['#4FD0A5', '#93C5FD', '#FFD966', '#AAAAAA', '#AAAAAA']
+  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  // Build a title lookup from snapshot for voter breakdown
+  const ideaTitleById = {}
+  ideas.forEach(i => { ideaTitleById[i.id] = i.title })
+
+  return (
+    <div>
+      {/* Back */}
+      <button
+        onClick={onBack}
+        style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: FONT, marginBottom: 28 }}
+      >
+        ← Vote History
+      </button>
+
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1E1E1E', margin: '0 0 6px 0' }}>
+          Session — {fmt(session.closed_at || session.created_at)}
+        </h2>
+        <p style={{ fontSize: 13, color: '#888888', margin: 0 }}>
+          {snap.total_voters ?? votes.length} participant{(snap.total_voters ?? votes.length) !== 1 ? 's' : ''}
+          {promoted.size > 0 ? ` · ${promoted.size} idea${promoted.size !== 1 ? 's' : ''} promoted to Planning` : ''}
+        </p>
+      </div>
+
+      {/* Results */}
+      {ideas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+          <p style={{ fontSize: 15, color: '#AAAAAA' }}>No votes were cast in this session.</p>
+        </div>
+      ) : (
+        <>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px 0' }}>Results</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 40 }}>
+            {ideas.map((idea, i) => {
+              const wasPromoted = promoted.has(idea.id)
+              return (
+                <div key={idea.id} style={{
+                  background: wasPromoted ? '#F0FFF8' : '#FFFFFF',
+                  border: `2px solid ${wasPromoted ? '#4FD0A5' : '#E2E0DC'}`,
+                  borderRadius: 8, padding: '16px 22px',
+                  display: 'flex', alignItems: 'center', gap: 16,
+                }}>
+                  {/* Rank */}
+                  <div style={{
+                    width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                    background: rankColors[i] || '#E2E0DC',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 800, color: '#1E1E1E',
+                  }}>{i + 1}</div>
+
+                  {/* Title + tag */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E' }}>{idea.title}</span>
+                      {idea.tag_name && <TagBadge name={idea.tag_name} />}
+                      {wasPromoted && (
+                        <span style={{
+                          background: '#E8F9F3', color: '#1a7a5e', border: '1px solid #4FD0A5',
+                          borderRadius: 4, padding: '2px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                        }}>MOVED TO PLANNING</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vote count */}
+                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#4FD0A5', lineHeight: 1 }}>{idea.vote_count}</div>
+                    <div style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>vote{idea.vote_count !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Voter breakdown */}
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px 0' }}>
+            Who voted for what
+          </h3>
+          {loading ? (
+            <p style={{ fontSize: 13, color: '#AAAAAA' }}>Loading…</p>
+          ) : votes.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#AAAAAA' }}>No votes recorded.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {votes.map(v => {
+                const votedTitles = (v.idea_ids || []).map(id => ideaTitleById[id] || id)
+                return (
+                  <div key={v.id} style={{
+                    background: '#FFFFFF', border: '1px solid #E2E0DC',
+                    borderRadius: 8, padding: '14px 18px',
+                    display: 'flex', alignItems: 'flex-start', gap: 16,
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      background: '#F3F3F3', border: '1px solid #E2E0DC',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color: '#888888',
+                    }}>
+                      {(v.email || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1E1E1E', marginBottom: 8 }}>{v.email}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {votedTitles.map((title, idx) => (
+                          <span key={idx} style={{
+                            background: '#F8F7F6', border: '1px solid #E2E0DC',
+                            borderRadius: 5, padding: '3px 10px', fontSize: 12, color: '#555555',
+                          }}>
+                            👍 {title}
+                          </span>
+                        ))}
+                        {votedTitles.length === 0 && (
+                          <span style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic' }}>No selections</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#AAAAAA', flexShrink: 0 }}>
+                      {votedTitles.length}/5
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Ideas Page ─────────────────────────────────────────────────────────
 
 export default function IdeasPage() {
@@ -705,6 +926,16 @@ export default function IdeasPage() {
   const [saving, setSaving]                 = useState(false)
   const [copied, setCopied]                 = useState(false)
   const [startingVote, setStartingVote]     = useState(false)
+
+  // History
+  const [closedSessions, setClosedSessions] = useState([])
+  const [historySession, setHistorySession] = useState(null)
+
+  useEffect(() => {
+    api.ideaVoteSessions.list()
+      .then(all => setClosedSessions((all || []).filter(s => s.status === 'closed')))
+      .catch(() => {})
+  }, [showResults]) // re-fetch when results are dismissed (session just closed)
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
@@ -757,7 +988,7 @@ export default function IdeasPage() {
   }
 
   const handlePromote = async (ideaIds) => {
-    await api.promoteIdeas(ideaIds)
+    await api.promoteIdeas(ideaIds, session?.id)
     removeMany(ideaIds)
     dismissResults()
   }
@@ -768,8 +999,15 @@ export default function IdeasPage() {
 
         <h1 style={{ fontSize: 30, fontWeight: 400, color: '#1E1E1E', margin: '0 0 28px 0', letterSpacing: '-0.5px' }}>Ideas</h1>
 
-        {/* ── Detail view ── */}
-        {selected ? (
+        {/* ── History detail view ── */}
+        {historySession ? (
+          <VoteHistoryDetail
+            session={historySession}
+            onBack={() => setHistorySession(null)}
+          />
+
+        /* ── Idea detail view ── */
+        ) : selected ? (
           <IdeaDetail
             key={selected.id}
             initial={selected}
@@ -891,6 +1129,14 @@ export default function IdeasPage() {
                   ))}
                 </div>
               )
+            )}
+
+            {/* Vote history */}
+            {!loading && (
+              <VoteHistoryList
+                sessions={closedSessions}
+                onSelect={setHistorySession}
+              />
             )}
           </>
         )}
