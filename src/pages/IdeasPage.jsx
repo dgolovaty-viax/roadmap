@@ -404,8 +404,9 @@ function ParticipantPanel({ votes, onRefresh }) {
 // ── Results View ───────────────────────────────────────────────────────
 
 function ResultsView({ votes, ideas, onPromote, onDismiss }) {
-  const [selected, setSelected] = useState(new Set())
-  const [promoting, setPromoting] = useState(false)
+  const [selected, setSelected]           = useState(new Set())
+  const [promoting, setPromoting]         = useState(false)
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   // Tally votes per idea
   const tally = {}
@@ -413,6 +414,9 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
     const ids = Array.isArray(v.idea_ids) ? v.idea_ids : []
     ids.forEach(id => { tally[id] = (tally[id] || 0) + 1 })
   })
+
+  // Title lookup for voter breakdown
+  const ideaTitleById = Object.fromEntries(ideas.map(i => [i.id, i.title]))
 
   // Top 5 by vote count
   const topIdeas = [...ideas]
@@ -541,6 +545,64 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Who voted for what — collapsible panel */}
+      {votes.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <button
+            onClick={() => setShowBreakdown(p => !p)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Who voted for what
+            </span>
+            <span style={{ fontSize: 12, color: '#AAAAAA' }}>{showBreakdown ? '▲' : '▼'}</span>
+          </button>
+
+          {showBreakdown && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {votes.map(v => {
+                const votedTitles = (v.idea_ids || []).map(id => ideaTitleById[id] || id)
+                return (
+                  <div key={v.id} style={{
+                    background: '#FFFFFF', border: '1px solid #E2E0DC',
+                    borderRadius: 8, padding: '14px 18px',
+                    display: 'flex', alignItems: 'flex-start', gap: 14,
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      background: '#F3F3F3', border: '1px solid #E2E0DC',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color: '#888888',
+                    }}>
+                      {(v.email || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1E1E1E', marginBottom: 8 }}>{v.email}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {votedTitles.length > 0
+                          ? votedTitles.map((title, idx) => (
+                              <span key={idx} style={{
+                                background: '#F8F7F6', border: '1px solid #E2E0DC',
+                                borderRadius: 5, padding: '3px 10px', fontSize: 12, color: '#555555',
+                              }}>👍 {title}</span>
+                            ))
+                          : <span style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic' }}>No selections</span>
+                        }
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#AAAAAA', flexShrink: 0 }}>{votedTitles.length}/5</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
