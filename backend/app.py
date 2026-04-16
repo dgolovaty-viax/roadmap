@@ -309,12 +309,14 @@ def close_idea_vote_session(session_id):
     snapshot_ideas = []
     if tally:
         ids_list = list(tally.keys())
-        ideas_res = supabase.table("ideas").select("id, title, idea_tags(name)").in_("id", ids_list).execute()
+        ideas_res = supabase.table("ideas").select("id, title, idea_tag_assignments(idea_tags(id, name))").in_("id", ids_list).execute()
         for idea in (ideas_res.data or []):
+            assignments = idea.get("idea_tag_assignments") or []
+            first_tag = next((a["idea_tags"] for a in assignments if a.get("idea_tags")), None)
             snapshot_ideas.append({
                 "id":        idea["id"],
                 "title":     idea.get("title", ""),
-                "tag_name":  (idea.get("idea_tags") or {}).get("name"),
+                "tag_name":  first_tag["name"] if first_tag else None,
                 "vote_count": tally.get(idea["id"], 0),
             })
         snapshot_ideas.sort(key=lambda x: x["vote_count"], reverse=True)
