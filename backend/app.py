@@ -296,40 +296,47 @@ def get_idea_vote_session(session_id):
 
 @app.route("/api/idea-vote-sessions/<session_id>/close", methods=["POST"])
 def close_idea_vote_session(session_id):
-    # Tally votes across all idea_votes for this session
-    votes_res = supabase.table("idea_votes").select("*").eq("session_id", session_id).execute()
-    votes     = votes_res.data or []
+    import traceback
 
-    tally = {}
-    for v in votes:
-        for iid in (v.get("idea_ids") or []):
-            tally[iid] = tally.get(iid, 0) + 1
+    # Step 1: close the session immediately — this must always succeed
+    supabase.table("idea_vote_sessions").update({"status": "closed"}).eq("id", session_id).execute()
 
-    # Resolve idea titles for snapshot
-    snapshot_ideas = []
-    if tally:
-        ids_list = list(tally.keys())
-        ideas_res = supabase.table("ideas").select("id, title, idea_tag_assignments(idea_tags(id, name))").in_("id", ids_list).execute()
-        for idea in (ideas_res.data or []):
-            assignments = idea.get("idea_tag_assignments") or []
-            first_tag = next((a["idea_tags"] for a in assignments if a.get("idea_tags")), None)
-            snapshot_ideas.append({
-                "id":        idea["id"],
-                "title":     idea.get("title", ""),
-                "tag_name":  first_tag["name"] if first_tag else None,
-                "vote_count": tally.get(idea["id"], 0),
-            })
-        snapshot_ideas.sort(key=lambda x: x["vote_count"], reverse=True)
+    # Step 2: build a result snapshot (best-effort — never blocks the close)
+    try:
+        votes_res = supabase.table("idea_votes").select("*").eq("session_id", session_id).execute()
+        votes     = votes_res.data or []
 
-    result_snapshot = {
-        "ideas":        snapshot_ideas,
-        "total_voters": len(votes),
-    }
+        tally = {}
+        for v in votes:
+            for iid in (v.get("idea_ids") or []):
+                tally[iid] = tally.get(iid, 0) + 1
 
-    supabase.table("idea_vote_sessions").update({
-        "status":          "closed",
-        "result_snapshot": result_snapshot,
-    }).eq("id", session_id).execute()
+        snapshot_ideas = []
+        if tally:
+            ids_list  = list(tally.keys())
+            ideas_res = supabase.table("ideas").select(
+                "id, title, idea_tag_assignments(idea_tags(id, name))"
+            ).in_("id", ids_list).execute()
+
+            for idea in (ideas_res.data or []):
+                assignments = idea.get("idea_tag_assignments") or []
+                first_tag   = next((a["idea_tags"] for a in assignments if a.get("idea_tags")), None)
+                snapshot_ideas.append({
+                    "id":         idea["id"],
+                    "title":      idea.get("title", ""),
+                    "tag_name":   first_tag["name"] if first_tag else None,
+                    "vote_count": tally.get(idea["id"], 0),
+                })
+            snapshot_ideas.sort(key=lambda x: x["vote_count"], reverse=True)
+
+        result_snapshot = {"ideas": snapshot_ideas, "total_voters": len(votes)}
+        supabase.table("idea_vote_sessions").update(
+            {"result_snapshot": result_snapshot}
+        ).eq("id", session_id).execute()
+
+    except Exception as e:
+        print(f"[close_session] snapshot failed (session still closed): {e}\n{traceback.format_exc()}")
+
     return jsonify({"ok": True})
 
 
