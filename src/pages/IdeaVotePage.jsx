@@ -152,39 +152,41 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting, colorMap 
           const isSelected = selected.has(idea.id)
           const isDisabled = !isSelected && selected.size >= MAX_VOTES
           const ideaTags = (idea.idea_tag_assignments || []).map(a => a.idea_tags).filter(Boolean)
+          const preview = (idea.description || '').trim().slice(0, 140)
 
           return (
             <div
               key={idea.id}
               style={{
                 background: isSelected ? '#F0FFF8' : '#FFFFFF',
-                border: `2px solid ${isSelected ? '#4FD0A5' : '#E2E0DC'}`,
-                borderRadius: 8, padding: '18px 20px',
-                opacity: isDisabled ? 0.5 : 1,
+                border: `${isSelected ? 2 : 1}px solid ${isSelected ? '#4FD0A5' : '#E2E0DC'}`,
+                borderRadius: 8, padding: isSelected ? '19px 23px' : '20px 24px',
+                opacity: isDisabled ? 0.45 : 1,
                 transition: 'all 0.15s',
-                display: 'flex', flexDirection: 'column', gap: 10,
+                display: 'flex', flexDirection: 'column',
+                boxShadow: !isSelected && !isDisabled ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
               }}
             >
-              {/* Title + tag */}
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1E1E1E', margin: 0, lineHeight: 1.4 }}>
-                    {idea.title}
-                  </h3>
-                  {ideaTags.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {ideaTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} colorMap={colorMap} />)}
-                    </div>
-                  )}
-                </div>
-                {idea.description && (
-                  <p style={{ fontSize: 12, color: '#888888', margin: 0, lineHeight: 1.6 }}>
-                    {idea.description.slice(0, 100)}{idea.description.length > 100 ? '…' : ''}
+              {/* Upper content — grows to fill, pushes tags + button down */}
+              <div style={{ flex: 1, minWidth: 0, marginBottom: 14 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1E1E1E', margin: '0 0 8px 0', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                  {idea.title}
+                </h3>
+                {preview && (
+                  <p style={{ fontSize: 13, color: '#888888', margin: 0, lineHeight: 1.65 }}>
+                    {preview}{(idea.description || '').length > 140 ? '…' : ''}
                   </p>
                 )}
               </div>
 
-              {/* Thumbs up button */}
+              {/* Tags — anchored above the button, matching browse view */}
+              {ideaTags.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+                  {ideaTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} colorMap={colorMap} />)}
+                </div>
+              )}
+
+              {/* Vote button */}
               <button
                 onClick={() => !isDisabled && onToggle(idea.id)}
                 disabled={isDisabled && !isSelected}
@@ -193,12 +195,12 @@ function VotingStep({ ideas, selected, onToggle, onSubmit, submitting, colorMap 
                   background: isSelected ? '#4FD0A5' : '#F3F3F3',
                   color: isSelected ? '#1E1E1E' : '#555555',
                   border: `1px solid ${isSelected ? '#4FD0A5' : '#E2E0DC'}`,
-                  borderRadius: 6, padding: '7px 0', cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  borderRadius: 6, padding: '8px 0', cursor: isDisabled ? 'not-allowed' : 'pointer',
                   fontSize: 13, fontWeight: 600, fontFamily: FONT, width: '100%',
                   transition: 'all 0.15s',
                 }}
               >
-                <span style={{ fontSize: 16 }}>👍</span>
+                <span style={{ fontSize: 15 }}>👍</span>
                 {isSelected ? 'Voted' : 'Vote for this'}
               </button>
             </div>
