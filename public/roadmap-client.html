@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax Platform Roadmap — Strategic Pillars</title>
+<link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+
+  :root {
+    --mint: #90E9B8;
+    --mint-dark: #4ED091;
+    --mint-text: #217A50;
+    --cream: #F8F6F3;
+    --cream-dark: #F2F1F0;
+    --white: #FEFEFE;
+    --dark: #1E1E1E;
+    --dark-alt: #2A2A2A;
+    --dark-deep: #141414;
+    --gray-light: #8A8A8A;
+    --gray-mid: #555555;
+    --border: #E2E0DC;
+    --green-tint: #EDF8F2;
+    --green-tbord: #B8E4CB;
+    --green-deep: #0D3D2A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Funnel Sans', 'Inter', system-ui, sans-serif;
+    color: var(--dark);
+    background: #e8e8e8;
+    -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .page {
+    width: 1280px; height: 720px;
+    margin: 0 auto; position: relative;
+    overflow: hidden; background: var(--cream);
+    page-break-after: always; page-break-inside: avoid;
+  }
+  @media screen { .page { box-shadow: 0 2px 20px rgba(0,0,0,0.12); margin: 20px auto; } }
+  @media print { body { background: white; } .page { box-shadow: none; margin: 0; } }
+
+  .accent-bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--mint-dark); }
+
+  .inner { padding: 28px 40px 24px; height: 100%; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+
+  .header-left {}
+  .eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--mint-text);
+    margin-bottom: 5px;
+  }
+  .headline { font-size: 22px; font-weight: 400; letter-spacing: -0.6px; line-height: 1.1; color: var(--dark); }
+  .headline span { color: var(--mint-dark); }
+  .subline { font-size: 14px; color: var(--gray-mid); line-height: 1.55; margin-top: 4px; max-width: 100%; }
+
+  .header-right {
+    text-align: right; flex-shrink: 0;
+  }
+  .header-right .logo-text {
+    font-family: 'Funnel Sans', sans-serif; font-size: 18px; font-weight: 700;
+    letter-spacing: -0.03em; color: var(--dark);
+  }
+  .header-right .logo-text span { color: var(--mint-dark); }
+  .header-right .tag {
+    font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-light);
+    display: block; margin-top: 2px;
+  }
+
+  /* FOUR PILLARS GRID */
+  .pillars { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+
+  .pillar {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 16px; display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+
+  .pillar::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+
+  .pillar-1::before { background: var(--mint-dark); }
+  .pillar-2::before { background: #6B9FE4; }
+  .pillar-3::before { background: #E4946B; }
+  .pillar-4::before { background: #9B8AE0; }
+
+  .pillar-num {
+    font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pillar-1 .pillar-num { color: var(--mint-text); }
+  .pillar-2 .pillar-num { color: #2A5FAA; }
+  .pillar-3 .pillar-num { color: #AA5A2A; }
+  .pillar-4 .pillar-num { color: #5A4AAA; }
+
+  .pillar-title {
+    font-size: 14px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.2;
+    color: var(--dark); margin-bottom: 6px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pillar-subtitle {
+    font-size: 15px; color: var(--gray-mid); line-height: 1.5;
+    margin-bottom: 10px; font-style: italic;
+  }
+
+  .pillar-bullets { list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+
+  .pillar-bullets li {
+    display: grid; grid-template-columns: 10px 1fr; gap: 7px;
+    align-items: start; font-size: 13.5px; color: var(--gray-mid); line-height: 1.5;
+  }
+
+  .bullet-dot {
+    width: 5px; height: 5px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+  }
+  .pillar-1 .bullet-dot { background: var(--mint-dark); }
+  .pillar-2 .bullet-dot { background: #6B9FE4; }
+  .pillar-3 .bullet-dot { background: #E4946B; }
+  .pillar-4 .bullet-dot { background: #9B8AE0; }
+
+  .pillar-bullets li strong { color: var(--dark); font-weight: 600; font-size: 13.5px; }
+
+  /* IMPACT BAND at bottom of each pillar */
+  .pillar-impact {
+    margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border);
+    font-size: 13.5px; font-style: italic; line-height: 1.45;
+  }
+  .pillar-1 .pillar-impact { color: var(--mint-text); }
+  .pillar-2 .pillar-impact { color: #2A5FAA; }
+  .pillar-3 .pillar-impact { color: #AA5A2A; }
+  .pillar-4 .pillar-impact { color: #5A4AAA; }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 14px; display: flex; justify-content: space-between; align-items: center;
+    padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .footer-note {
+    font-family: 'DM Mono', monospace; font-size: 9px; color: var(--gray-light);
+    letter-spacing: 0.05em;
+  }
+  .footer-tag {
+    font-family: 'DM Mono', monospace; font-size: 9px; color: var(--gray-light);
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="accent-bar"></div>
+  <div class="inner">
+
+    <div class="header">
+      <div class="header-left">
+        <div class="eyebrow">Platform Roadmap &middot; Strategic Pillars</div>
+        <div class="headline">Where viax is headed &mdash; and what it means <span>for your business.</span></div>
+        <div class="subline">Four interconnected investments define the viax platform direction for the next 12&ndash;18 months. Each pillar is designed to make it faster to build, simpler to operate, and more powerful to extend &mdash; without increasing the burden on your team.</div>
+      </div>
+      <div class="header-right">
+        <div class="logo-text">vi<span>ax</span></div>
+        <span class="tag">Roadmap &middot; 2025&ndash;2026</span>
+      </div>
+    </div>
+
+    <div class="pillars">
+
+      <!-- PILLAR 1 -->
+      <div class="pillar pillar-1">
+        <div class="pillar-num">Pillar 01</div>
+        <div class="pillar-title">Spec-Driven Execution</div>
+        <div class="pillar-subtitle">Build new capabilities from natural language — not tickets.</div>
+        <ul class="pillar-bullets">
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Natural language modeling:</strong> Describe a process or rule in plain language. viax builds it.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Reusable skills library:</strong> Build once. Reuse across every new initiative without rebuilding.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Rapid new vertical prototyping:</strong> New channels and verticals live in days, not quarters.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>UI generation from specs:</strong> Specs generate UI components automatically, cutting design-to-build time.</span>
+          </li>
+        </ul>
+        <div class="pillar-impact">What this means for you: new revenue channels and business models move from concept to live in weeks, not quarters &mdash; without proportional growth in development overhead.</div>
+      </div>
+
+      <!-- PILLAR 2 -->
+      <div class="pillar pillar-2">
+        <div class="pillar-num">Pillar 02</div>
+        <div class="pillar-title">Agentic Execution</div>
+        <div class="pillar-subtitle">Automate the lifecycle tasks that currently require manual intervention.</div>
+        <ul class="pillar-bullets">
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Scheduled task automation:</strong> Renewals, updates, and reports run automatically on schedule.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Event-triggered workflows:</strong> Agents activate on real events, reducing response time to seconds.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Agent invocation across the lifecycle:</strong> Execute agent tasks in defined workflow actions</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Agent hosting on viax infrastructure:</strong> viax hosts and governs agents. No separate tooling required.</span>
+          </li>
+        </ul>
+        <div class="pillar-impact">What this means for you: Define how agents participate in your revenue motions.</div>
+      </div>
+
+      <!-- PILLAR 3 -->
+      <div class="pillar pillar-3">
+        <div class="pillar-num">Pillar 03</div>
+        <div class="pillar-title">Go-to-Market Efficiency</div>
+        <div class="pillar-subtitle">Faster path from business need to working demonstration to production.</div>
+        <ul class="pillar-bullets">
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Improved demo &amp; prototyping tools:</strong> Validate working demos before any engineering investment is committed.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Customer-facing accelerators:</strong> Preconfigured templates for portals, ordering, and subscriptions.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Reduced onboarding friction:</strong> Each new vertical builds faster than the last.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Better visibility into progress:</strong> Clear progress dashboards. Your team always knows where things stand.</span>
+          </li>
+        </ul>
+        <div class="pillar-impact">What this means for you: the gap between "we need this" and "this is live and generating value" gets shorter with every release cycle.</div>
+      </div>
+
+      <!-- PILLAR 4 -->
+      <div class="pillar pillar-4">
+        <div class="pillar-num">Pillar 04</div>
+        <div class="pillar-title">Platform &amp; Infrastructure</div>
+        <div class="pillar-subtitle">A more stable, faster, and simpler platform to build on.</div>
+        <ul class="pillar-bullets">
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>More frequent releases with less risk:</strong> Smaller, more frequent releases with lower risk and coordination cost.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>API simplification:</strong> Cleaner APIs mean less integration overhead for your team.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Reduced operational overhead:</strong> Automation eliminates manual release and compatibility coordination overhead.</span>
+          </li>
+          <li>
+            <div class="bullet-dot"></div>
+            <span><strong>Foundation for AI and agent capabilities:</strong> Cleaner infrastructure makes spec-driven and agentic capabilities reliable.</span>
+          </li>
+        </ul>
+        <div class="pillar-impact">What this means for you: the platform gets faster and more reliable without requiring more from your team &mdash; and the foundation for everything above gets stronger.</div>
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <div class="footer-note">viax Platform Roadmap &middot; Strategic Pillars Summary &middot; Confidential</div>
+      <div class="footer-tag">viax.io &middot; &copy; 2026 viax, Inc.</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
