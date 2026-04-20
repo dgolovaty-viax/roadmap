@@ -9,14 +9,6 @@ function downloadHTML(url, filename) {
   a.click()
 }
 
-function downloadPDF(url) {
-  const w = window.open(url, '_blank')
-  if (!w) return
-  w.addEventListener('load', () => {
-    setTimeout(() => w.print(), 400)
-  })
-}
-
 function IconExternal() {
   return (
     <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
@@ -105,10 +97,7 @@ export default function RoadmapPage() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Btn onClick={() => downloadHTML('/roadmap.html', 'viax-roadmap-2026.html')}>
-                  <IconDownload /> HTML
-                </Btn>
-                <Btn onClick={() => downloadPDF('/roadmap.html')} muted>
-                  <IconDownload /> PDF
+                  <IconDownload /> Download
                 </Btn>
               </div>
             </div>
@@ -123,10 +112,7 @@ export default function RoadmapPage() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Btn onClick={() => downloadHTML('/roadmap-client.html', 'viax-roadmap-client.html')}>
-                  <IconDownload /> HTML
-                </Btn>
-                <Btn onClick={() => downloadPDF('/roadmap-client.html')} muted>
-                  <IconDownload /> PDF
+                  <IconDownload /> Download
                 </Btn>
                 <Btn onClick={() => window.open('/roadmap-client.html', '_blank')}>
                   <IconExternal /> View
