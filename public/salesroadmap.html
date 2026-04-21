@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax — Platform Roadmap for Revenue Leaders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Neutrals */
+    --cream:          #F8F7F6;
+    --white:          #FEFEFE;
+    --dark:           #1E1E1E;
+    --dark-alt:       #2A2A2A;
+    --gray-light:     #8A8A8A;
+    --gray-mid:       #525252;
+    --bg-med:         #E8E6E3;
+    --border:         #E2E0DC;
+    --border-dark:    #383838;
+    --border-mid:     #2E2E2E;
+    --cream-dark:     #F2F1F0;
+    --cream-deeper:   #EBEBEA;
+    --logo-gray:      #9F9FAA;
+
+    /* Accent */
+    --mint:           #90E9B8;
+    --mint-dark:      #5ED49A;
+    --mint-text:      #177558;
+    --mint-tint:      rgba(94,212,154,0.08);
+    --mint-tint-2:    rgba(94,212,154,0.14);
+
+    /* Fonts */
+    --font-display:   "Funnel Sans", Inter, system-ui, sans-serif;
+    --font-mono:      "DM Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--cream);
+    color: var(--dark);
+    font-family: var(--font-display);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body { padding: 0; }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    background: var(--cream);
+  }
+
+  /* ------- HEADER BAND ------- */
+  .doc-header {
+    background: var(--dark);
+    color: var(--white);
+    padding: 22px 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-dark);
+  }
+
+  .doc-header .logo-slot svg { display: block; height: 28px; width: auto; }
+
+  .doc-header .eyebrow-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--logo-gray);
+  }
+
+  .eyebrow--mint { color: var(--mint-dark); }
+
+  /* ------- HERO ------- */
+  .hero {
+    padding: 72px 56px 56px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 20px;
+  }
+
+  .headline {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 400;
+    letter-spacing: -2px;
+    line-height: 1.0;
+    color: var(--dark);
+    max-width: 980px;
+  }
+
+  .headline .accent { color: var(--mint-text); }
+
+  .subhead {
+    margin-top: 28px;
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--gray-mid);
+    max-width: 860px;
+    font-weight: 300;
+  }
+
+  /* ------- THESIS BAND ------- */
+  .thesis-band {
+    background: var(--dark);
+    color: var(--white);
+    padding: 52px 56px;
+    border-bottom: 1px solid var(--border-dark);
+  }
+
+  .thesis-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mint-dark);
+    margin-bottom: 18px;
+  }
+
+  .thesis-line {
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: -0.6px;
+    line-height: 1.25;
+    color: var(--white);
+    max-width: 1060px;
+  }
+
+  .thesis-line .accent { color: var(--mint-dark); }
+
+  /* ------- SECTION HEAD ------- */
+  .section-head {
+    padding: 56px 56px 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+
+  .section-rule {
+    width: 32px;
+    height: 3px;
+    background: var(--mint-dark);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dark);
+  }
+
+  .section-label-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--gray-light);
+    letter-spacing: 0.04em;
+  }
+
+  /* ------- IN-MOTION STRIP ------- */
+  .in-motion {
+    padding: 0 56px 24px;
+  }
+
+  .motions-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .motion-tile {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+
+  .motion-tile::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 28px; height: 2px;
+    background: var(--mint-dark);
+    border-radius: 2px 0 2px 0;
+  }
+
+  .motion-tile h3 {
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--dark);
+    line-height: 1.25;
+  }
+
+  .motion-tile p {
+    font-size: 14px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+    flex-grow: 1;
+  }
+
+  .motion-tile .motion-meta {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--mint-text);
+    text-transform: uppercase;
+  }
+
+  /* ------- PILLARS ------- */
+  .pillars { padding: 0 56px 32px; }
+
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .pillar-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px 26px 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pillar-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--mint-dark);
+  }
+
+  .pillar-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--mint-text);
+    text-transform: uppercase;
+  }
+
+  .pillar-title {
+    margin-top: 10px;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--dark);
+    line-height: 1.2;
+  }
+
+  .pillar-lede {
+    margin-top: 14px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--mint-text);
+    font-style: italic;
+    font-weight: 400;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pillar-items {
+    margin-top: 18px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex-grow: 1;
+  }
+
+  .pillar-items li {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--gray-mid);
+    position: relative;
+    padding-left: 14px;
+  }
+
+  .pillar-items li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 7px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mint-dark);
+  }
+
+  .pillar-items li strong {
+    color: var(--dark);
+    font-weight: 500;
+  }
+
+  .in-market {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .in-market-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--mint-text);
+    text-transform: uppercase;
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--mint-tint-2);
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+
+  .in-market p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--gray-mid);
+    font-weight: 400;
+  }
+
+  .meaning {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--dark);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .meaning-prefix {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--mint-text);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ------- PROOF BAND ------- */
+  .proof-band {
+    padding: 0 56px 48px;
+  }
+
+  .proof-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .proof-tile {
+    background: var(--cream-dark);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 24px;
+  }
+
+  .proof-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .proof-tile .proof-title {
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--dark);
+    font-weight: 400;
+    letter-spacing: -0.2px;
+  }
+
+  .proof-tile .proof-meta {
+    display: block;
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--gray-light);
+  }
+
+  /* ------- FOOTER / CTA ------- */
+  .doc-footer {
+    background: var(--dark);
+    color: var(--white);
+    padding: 56px 56px 28px;
+  }
+
+  .doc-footer--slim {
+    padding: 22px 56px;
+  }
+
+  .doc-footer--slim .footer-meta {
+    margin-top: 0;
+  }
+
+  .cta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border-dark);
+  }
+
+  .cta-head {
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.8px;
+    color: var(--white);
+    line-height: 1.15;
+    max-width: 560px;
+  }
+
+  .cta-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 13px 24px;
+    border-radius: 4px;
+    display: inline-block;
+    transition: transform 0.2s cubic-bezier(.44,0,.56,1);
+  }
+
+  .btn-primary { background: var(--mint-dark); color: var(--dark); border: none; }
+  .btn-outline { background: transparent; color: var(--white); border: 1px solid var(--border-dark); }
+
+  .btn:hover { transform: translateY(-1px); }
+
+  .footer-meta {
+    margin-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--logo-gray);
+    letter-spacing: 0.06em;
+  }
+
+  .footer-meta .tagline { color: var(--mint-dark); }
+
+  /* ------- RESPONSIVE ------- */
+  @media (max-width: 1100px) {
+    .headline { font-size: 44px; letter-spacing: -1.4px; }
+    .thesis-line { font-size: 24px; letter-spacing: -0.4px; }
+    .motions-row { grid-template-columns: repeat(2, 1fr); }
+    .pillar-grid { grid-template-columns: repeat(2, 1fr); }
+    .proof-row { grid-template-columns: 1fr; }
+    .cta-row { flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 640px) {
+    .doc-header, .hero, .thesis-band, .in-motion, .pillars, .proof-band, .doc-footer { padding-left: 24px; padding-right: 24px; }
+    .headline { font-size: 36px; letter-spacing: -1.2px; }
+    .thesis-line { font-size: 20px; }
+    .motions-row, .pillar-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ------- PRINT ------- */
+  @media print {
+    html, body { background: var(--cream); }
+    .page { max-width: none; }
+    .doc-header, .doc-footer, .thesis-band { background: var(--dark) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pillar-card, .motion-tile, .proof-tile { break-inside: avoid; }
+    .btn:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="doc-header">
+    <div class="logo-slot">
+      <svg width="140" height="36" viewBox="0 0 285 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="viax">
+        <path d="M258.095 74C242.927 74 232.079 64.6667 232.079 47.7143C232.079 30.0953 242.927 21.5238 258.095 21.5238C273.359 21.5238 284.207 30.0953 284.207 47.7143C284.207 64.6667 273.359 74 258.095 74ZM258.095 63.0476C266.351 63.0476 272.207 57.5238 272.207 47.8095C272.207 37.7143 266.351 32.5715 258.095 32.5715C249.935 32.5715 244.079 37.7143 244.079 47.8095C244.079 57.5238 249.935 63.0476 258.095 63.0476Z" fill="#FEFEFE"/>
+        <path d="M212.084 72.8571V22.6667H224.948V72.8571H212.084ZM211.028 0H226.004V13.2381H211.028V0Z" fill="#FEFEFE"/>
+        <path d="M189.174 59.5237H203.19V72.857H189.174V59.5237Z" fill="#FEFEFE"/>
+        <path d="M100.267 74C85.9627 74 75.5947 64.7619 75.5947 47.8095C75.5947 30.1905 85.9627 21.5238 100.267 21.5238C108.331 21.5238 114.667 24.5715 118.507 30.4762L119.659 22.6667H128.683V72.8572H119.467L118.411 65.0476C114.571 70.8572 108.331 74 100.267 74ZM101.611 63.0476C109.867 63.0476 115.723 57.5238 115.723 47.8095C115.723 37.7143 109.867 32.5715 101.611 32.5715C93.4507 32.5715 87.5947 37.7143 87.5947 47.8095C87.5947 57.5238 93.4507 63.0476 101.611 63.0476Z" fill="#FEFEFE"/>
+        <path d="M55.6004 72.8571V22.6667H68.4644V72.8571H55.6004ZM54.5444 0H69.5204V13.2381H54.5444V0Z" fill="#FEFEFE"/>
+        <path d="M18.336 72.8571L0 30.9523V22.6666H9.984L24.96 61.0475L39.648 22.6666H49.536V30.9523L31.296 72.8571H18.336Z" fill="#FEFEFE"/>
+        <path d="M158.755 57.8916L147.656 72.9756H137V63.0879L149.21 48.3457L158.755 57.8916ZM181.064 63.0879V72.9756H170.12L159.23 58.1768L168.898 48.5088L181.064 63.0879ZM158.622 36.5127L148.93 46.2051L137 31.8877V22H148.136L158.622 36.5127ZM181.064 31.8877L169.18 46.043L159.367 36.2314L169.928 22H181.064V31.8877Z" fill="#5ED49A"/>
+      </svg>
+    </div>
+    <div class="eyebrow-group">
+      <span class="eyebrow eyebrow--mint">Platform Roadmap</span>
+      <span class="eyebrow">For Revenue Leaders · 2026</span>
+    </div>
+  </header>
+
+  <!-- PILLARS -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <span class="section-label">Where the platform is headed</span>
+  </div>
+
+  <section class="pillars">
+    <div class="pillar-grid">
+
+      <!-- Pillar 1 -->
+      <article class="pillar-card">
+        <span class="pillar-num">Pillar 01</span>
+        <h3 class="pillar-title">Change at decision speed</h3>
+        <p class="pillar-lede">Revenue motions change in days, not ERP programs.</p>
+        <ul class="pillar-items">
+          <li><strong>Describe motions in plain language.</strong> viax models and executes them &mdash; no tickets, no transformation timelines.</li>
+          <li><strong>No point solution per motion.</strong> viax models and executes CPQ, billing, subscription, commerce &mdash; all from one governed layer, no integration debt between them.</li>
+          <li><strong>New channels and verticals live in days.</strong> Not quarters, not release cycles.</li>
+          <li><strong>Interfaces build themselves from the model.</strong> No separate front-end project for every motion.</li>
+        </ul>
+        <p class="meaning">
+          <span class="meaning-prefix">What this means for you</span>
+          New revenue channels and business models move from concept to live in weeks &mdash; and each motion you model on viax is one less point solution to buy, integrate, and own.
+        </p>
+        <div class="in-market">
+          <span class="in-market-label">In market now</span>
+          <p>Claude skills for modeling &middot; DBS component Claude skills &middot; business-execution-model-driven experiences</p>
+        </div>
+      </article>
+
+      <!-- Pillar 2 -->
+      <article class="pillar-card">
+        <span class="pillar-num">Pillar 02</span>
+        <h3 class="pillar-title">AI-ready substrate</h3>
+        <p class="pillar-lede">Deterministic execution is where AI lands safely.</p>
+        <ul class="pillar-items">
+          <li><strong>Agents participate in every motion lifecycle.</strong> Inside the governed model &mdash; every action auditable.</li>
+          <li><strong>Agents fire on real business events.</strong> Status transitions, lifecycle actions &mdash; response in seconds.</li>
+          <li><strong>Scheduled agent execution.</strong> Renewals, updates, reports run automatically on schedule.</li>
+          <li><strong>Partners and customers author agents on viax.</strong> Self-service agent deployment on a governed substrate.</li>
+        </ul>
+        <p class="meaning">
+          <span class="meaning-prefix">What this means for you</span>
+          AI agents run inside the same governed model that runs the motion &mdash; not a separate AI stack bolted onto a sprawl of point solutions.
+        </p>
+        <div class="in-market">
+          <span class="in-market-label">In market now</span>
+          <p>viax MCP Server &middot; agent invocation from BI Modeller &middot; webhook response into the Modeller</p>
+        </div>
+      </article>
+
+      <!-- Pillar 3 -->
+      <article class="pillar-card">
+        <span class="pillar-num">Pillar 03</span>
+        <h3 class="pillar-title">Proof before commitment</h3>
+        <p class="pillar-lede">Your motion live in days &mdash; before you sign.</p>
+        <ul class="pillar-items">
+          <li><strong>Working demos validate the business case.</strong> Before engineering investment gets committed.</li>
+          <li><strong>The POV is the real start of your implementation.</strong> Not a throwaway demo &mdash; the governed layer it runs on is the layer your roadmap builds on.</li>
+          <li><strong>Preconfigured motion templates.</strong> Portals, ordering, subscription &mdash; ready to tailor.</li>
+          <li><strong>Every new vertical builds faster than the last.</strong> The proof-of-value path shortens with scale.</li>
+        </ul>
+        <p class="meaning">
+          <span class="meaning-prefix">What this means for you</span>
+          The gap between &ldquo;we need this&rdquo; and &ldquo;this is live and generating value&rdquo; gets shorter with every release &mdash; proven on one model, not a stack of point-solution integrations to re-justify each time.
+        </p>
+        <div class="in-market">
+          <span class="in-market-label">In market now</span>
+          <p>Proof-of-value environments &middot; preconfigured motion templates &middot; investor- and buyer-ready configuration demos</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="doc-footer doc-footer--slim">
+    <div class="footer-meta">
+      <span class="tagline">AI reasons. viax executes. ERP records.</span>
+      <span>viax Platform Roadmap &middot; Outcome Pillars</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

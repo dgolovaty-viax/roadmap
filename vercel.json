@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/((?!roadmap\\.html$).*)", "destination": "/index.html" }
+    { "source": "/salesroadmap", "destination": "/salesroadmap.html" },
+    { "source": "/((?!roadmap\\.html$|salesroadmap\\.html$).*)", "destination": "/index.html" }
   ]
 }
