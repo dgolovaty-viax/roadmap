@@ -124,7 +124,7 @@ export default function RoadmapPage() {
             <div style={{ borderTop: '1px solid #2e2e2e', marginBottom: 12 }} />
 
             {/* Sales roadmap row */}
-            <div>
+            <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>
                 Sales Roadmap
               </div>
@@ -133,6 +133,24 @@ export default function RoadmapPage() {
                   <IconDownload /> Download
                 </Btn>
                 <Btn onClick={() => window.open('/salesroadmap', '_blank')}>
+                  <IconExternal /> View
+                </Btn>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: '1px solid #2e2e2e', marginBottom: 12 }} />
+
+            {/* Investor roadmap row */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>
+                Investor Roadmap
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Btn onClick={() => downloadHTML('/investorroadmap', 'viax-investorroadmap.html')}>
+                  <IconDownload /> Download
+                </Btn>
+                <Btn onClick={() => window.open('/investorroadmap', '_blank')}>
                   <IconExternal /> View
                 </Btn>
               </div>

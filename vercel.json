@@ -4,6 +4,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/salesroadmap", "destination": "/salesroadmap.html" },
-    { "source": "/((?!roadmap\\.html$|salesroadmap\\.html$).*)", "destination": "/index.html" }
+    { "source": "/investorroadmap", "destination": "/investorroadmap.html" },
+    { "source": "/((?!roadmap\\.html$|salesroadmap\\.html$|investorroadmap\\.html$).*)", "destination": "/index.html" }
   ]
 }

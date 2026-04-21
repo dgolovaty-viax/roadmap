@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>viax — Platform Roadmap for Revenue Leaders</title>
+<title>viax — Platform Roadmap for Investors</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
@@ -86,44 +86,6 @@
 
   .eyebrow--mint { color: var(--mint-dark); }
 
-  /* ------- HERO ------- */
-  .hero {
-    padding: 72px 56px 56px;
-    background: var(--cream);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .hero-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mint-text);
-    margin-bottom: 20px;
-  }
-
-  .headline {
-    font-family: var(--font-display);
-    font-size: 56px;
-    font-weight: 400;
-    letter-spacing: -2px;
-    line-height: 1.0;
-    color: var(--dark);
-    max-width: 980px;
-  }
-
-  .headline .accent { color: var(--mint-text); }
-
-  .subhead {
-    margin-top: 28px;
-    font-size: 19px;
-    line-height: 1.55;
-    color: var(--gray-mid);
-    max-width: 860px;
-    font-weight: 300;
-  }
-
   /* ------- THESIS BAND ------- */
   .thesis-band {
     background: var(--dark);
@@ -184,62 +146,6 @@
     font-weight: 400;
     color: var(--gray-light);
     letter-spacing: 0.04em;
-  }
-
-  /* ------- IN-MOTION STRIP ------- */
-  .in-motion {
-    padding: 0 56px 24px;
-  }
-
-  .motions-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
-
-  .motion-tile {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 22px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: relative;
-  }
-
-  .motion-tile::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0;
-    width: 28px; height: 2px;
-    background: var(--mint-dark);
-    border-radius: 2px 0 2px 0;
-  }
-
-  .motion-tile h3 {
-    font-size: 17px;
-    font-weight: 500;
-    letter-spacing: -0.3px;
-    color: var(--dark);
-    line-height: 1.25;
-  }
-
-  .motion-tile p {
-    font-size: 14px;
-    color: var(--gray-mid);
-    line-height: 1.5;
-    flex-grow: 1;
-  }
-
-  .motion-tile .motion-meta {
-    margin-top: 6px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    color: var(--mint-text);
-    text-transform: uppercase;
   }
 
   /* ------- PILLARS ------- */
@@ -330,34 +236,6 @@
     font-weight: 500;
   }
 
-  .in-market {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--border);
-  }
-
-  .in-market-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    color: var(--mint-text);
-    text-transform: uppercase;
-    display: inline-block;
-    padding: 3px 8px;
-    background: var(--mint-tint-2);
-    border-radius: 3px;
-    margin-bottom: 8px;
-  }
-
-  .in-market p {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--gray-mid);
-    font-weight: 400;
-  }
-
   .meaning {
     margin-top: 18px;
     padding-top: 16px;
@@ -381,106 +259,14 @@
     text-transform: uppercase;
   }
 
-  /* ------- PROOF BAND ------- */
-  .proof-band {
-    padding: 0 56px 48px;
-  }
-
-  .proof-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-
-  .proof-tile {
-    background: var(--cream-dark);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 22px 24px;
-  }
-
-  .proof-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mint-text);
-    display: block;
-    margin-bottom: 10px;
-  }
-
-  .proof-tile .proof-title {
-    font-size: 15px;
-    line-height: 1.45;
-    color: var(--dark);
-    font-weight: 400;
-    letter-spacing: -0.2px;
-  }
-
-  .proof-tile .proof-meta {
-    display: block;
-    margin-top: 12px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 400;
-    letter-spacing: 0.04em;
-    color: var(--gray-light);
-  }
-
-  /* ------- FOOTER / CTA ------- */
+  /* ------- FOOTER ------- */
   .doc-footer {
     background: var(--dark);
     color: var(--white);
-    padding: 56px 56px 28px;
-  }
-
-  .doc-footer--slim {
     padding: 22px 56px;
   }
 
-  .doc-footer--slim .footer-meta {
-    margin-top: 0;
-  }
-
-  .cta-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 32px;
-    padding-bottom: 28px;
-    border-bottom: 1px solid var(--border-dark);
-  }
-
-  .cta-head {
-    font-size: 32px;
-    font-weight: 400;
-    letter-spacing: -0.8px;
-    color: var(--white);
-    line-height: 1.15;
-    max-width: 560px;
-  }
-
-  .cta-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-
-  .btn {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-    padding: 13px 24px;
-    border-radius: 4px;
-    display: inline-block;
-    transition: transform 0.2s cubic-bezier(.44,0,.56,1);
-  }
-
-  .btn-primary { background: var(--mint-dark); color: var(--dark); border: none; }
-  .btn-outline { background: transparent; color: var(--white); border: 1px solid var(--border-dark); }
-
-  .btn:hover { transform: translateY(-1px); }
-
   .footer-meta {
-    margin-top: 24px;
     display: flex;
     justify-content: space-between;
     gap: 16px;
@@ -494,18 +280,13 @@
 
   /* ------- RESPONSIVE ------- */
   @media (max-width: 1100px) {
-    .headline { font-size: 44px; letter-spacing: -1.4px; }
     .thesis-line { font-size: 24px; letter-spacing: -0.4px; }
-    .motions-row { grid-template-columns: repeat(2, 1fr); }
     .pillar-grid { grid-template-columns: repeat(2, 1fr); }
-    .proof-row { grid-template-columns: 1fr; }
-    .cta-row { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 640px) {
-    .doc-header, .hero, .thesis-band, .in-motion, .pillars, .proof-band, .doc-footer { padding-left: 24px; padding-right: 24px; }
-    .headline { font-size: 36px; letter-spacing: -1.2px; }
+    .doc-header, .thesis-band, .pillars, .doc-footer { padding-left: 24px; padding-right: 24px; }
     .thesis-line { font-size: 20px; }
-    .motions-row, .pillar-grid { grid-template-columns: 1fr; }
+    .pillar-grid { grid-template-columns: 1fr; }
   }
 
   /* ------- PRINT ------- */
@@ -513,8 +294,7 @@
     html, body { background: var(--cream); }
     .page { max-width: none; }
     .doc-header, .doc-footer, .thesis-band { background: var(--dark) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .pillar-card, .motion-tile, .proof-tile { break-inside: avoid; }
-    .btn:hover { transform: none; }
+    .pillar-card { break-inside: avoid; }
   }
 </style>
 </head>
@@ -536,9 +316,15 @@
     </div>
     <div class="eyebrow-group">
       <span class="eyebrow eyebrow--mint">Platform Roadmap</span>
-      <span class="eyebrow">For Revenue Leaders · 2026</span>
+      <span class="eyebrow">For Investors &middot; 2026</span>
     </div>
   </header>
+
+  <!-- THESIS BAND -->
+  <section class="thesis-band">
+    <p class="thesis-eyebrow">The thesis</p>
+    <p class="thesis-line">One governed layer under every revenue motion. <span class="accent">A compounding moat with every vertical. The substrate where agentic AI finally meets the enterprise.</span></p>
+  </section>
 
   <!-- PILLARS -->
   <div class="section-head">
@@ -552,74 +338,61 @@
       <!-- Pillar 1 -->
       <article class="pillar-card">
         <span class="pillar-num">Pillar 01</span>
-        <h3 class="pillar-title">Change at decision speed</h3>
-        <p class="pillar-lede">Revenue motions change in days, not ERP programs.</p>
+        <h3 class="pillar-title">The category we&rsquo;re defining</h3>
+        <p class="pillar-lede">One governed layer replaces the point-solution stack.</p>
         <ul class="pillar-items">
-          <li><strong>Describe motions in plain language.</strong> viax models and executes them &mdash; no tickets, no transformation timelines.</li>
-          <li><strong>No point solution per motion.</strong> viax models and executes CPQ, billing, subscription, commerce &mdash; all from one governed layer, no integration debt between them.</li>
-          <li><strong>New channels and verticals live in days.</strong> Not quarters, not release cycles.</li>
-          <li><strong>Interfaces build themselves from the model.</strong> No separate front-end project for every motion.</li>
+          <li><strong>The Execution Gap is a category.</strong> ERP records. Point solutions fragment. Neither executes the revenue motion. viax does.</li>
+          <li><strong>One layer, every motion.</strong> CPQ, subscription, channel, M&amp;A, billing, commerce &mdash; modeled and executed from the same substrate.</li>
+          <li><strong>TAM is every revenue motion in every ERP-backed enterprise.</strong> The gap created itself; viax is the first layer built to close it.</li>
+          <li><strong>Defensibility starts with declarative modeling.</strong> The motion becomes the asset &mdash; owned by the enterprise, not a config inside someone else&rsquo;s tool.</li>
         </ul>
         <p class="meaning">
-          <span class="meaning-prefix">What this means for you</span>
-          New revenue channels and business models move from concept to live in weeks &mdash; and each motion you model on viax is one less point solution to buy, integrate, and own.
+          <span class="meaning-prefix">What this means</span>
+          The category doesn&rsquo;t yet exist in any analyst taxonomy. viax is defining and occupying it before the competitive frame hardens.
         </p>
-        <div class="in-market">
-          <span class="in-market-label">In market now</span>
-          <p>Claude skills for modeling &middot; DBS component Claude skills &middot; business-execution-model-driven experiences</p>
-        </div>
       </article>
 
       <!-- Pillar 2 -->
       <article class="pillar-card">
         <span class="pillar-num">Pillar 02</span>
-        <h3 class="pillar-title">AI-ready substrate</h3>
-        <p class="pillar-lede">Deterministic execution is where AI lands safely.</p>
+        <h3 class="pillar-title">The compounding moat</h3>
+        <p class="pillar-lede">Every motion modeled shortens the next.</p>
         <ul class="pillar-items">
-          <li><strong>Agents participate in every motion lifecycle.</strong> Inside the governed model &mdash; every action auditable.</li>
-          <li><strong>Agents fire on real business events.</strong> Status transitions, lifecycle actions &mdash; response in seconds.</li>
-          <li><strong>Scheduled agent execution.</strong> Renewals, updates, reports run automatically on schedule.</li>
-          <li><strong>viax Nexus &mdash; your organization&rsquo;s open brain.</strong> Every motion, product, agreement and policy modeled in one place &mdash; your full business context, available to every person and every agent.</li>
+          <li><strong>Templates compound.</strong> Every motion modeled on viax becomes a starting point for the next &mdash; same substrate, less work each time.</li>
+          <li><strong>Verticals compound.</strong> Each new vertical ships faster than the last; the platform gets more valuable with scale, not just volume.</li>
+          <li><strong>Partners extend the model.</strong> viax MCP Server lets customers and partners author motions and agents on the governed substrate.</li>
+          <li><strong>viax Nexus &mdash; the open brain of the enterprise.</strong> One modeled layer holds the full organizational context: every motion, every product, every agreement, every policy &mdash; in one place, accessible to humans and agents alike.</li>
         </ul>
         <p class="meaning">
-          <span class="meaning-prefix">What this means for you</span>
-          AI agents run inside the same governed model that runs the motion &mdash; not a separate AI stack bolted onto a sprawl of point solutions.
+          <span class="meaning-prefix">What this means</span>
+          One platform for your entire business roadmap &mdash; where the full context of the organization lives in one place, not scattered across a stack of point solutions each holding a sliver.
         </p>
-        <div class="in-market">
-          <span class="in-market-label">In market now</span>
-          <p>viax MCP Server &middot; agent invocation from BI Modeller &middot; webhook response into the Modeller</p>
-        </div>
       </article>
 
       <!-- Pillar 3 -->
       <article class="pillar-card">
         <span class="pillar-num">Pillar 03</span>
-        <h3 class="pillar-title">Proof before commitment</h3>
-        <p class="pillar-lede">Your motion live in days &mdash; before you sign.</p>
+        <h3 class="pillar-title">Vision: the AI-operated enterprise</h3>
+        <p class="pillar-lede">AI reasons. viax executes. ERP records.</p>
         <ul class="pillar-items">
-          <li><strong>Working demos validate the business case.</strong> Before engineering investment gets committed.</li>
-          <li><strong>The POV is the real start of your implementation.</strong> Not a throwaway demo &mdash; the governed layer it runs on is the layer your roadmap builds on.</li>
-          <li><strong>Preconfigured motion templates.</strong> Portals, ordering, subscription &mdash; ready to tailor.</li>
-          <li><strong>Every new vertical builds faster than the last.</strong> The proof-of-value path shortens with scale.</li>
+          <li><strong>Deterministic execution is where AI lands safely.</strong> Agents on top of a point-solution stack hallucinate. Agents on a modeled, governed substrate execute.</li>
+          <li><strong>Agents participate in every motion lifecycle.</strong> Inside the governed model &mdash; every action auditable, every handoff traceable.</li>
+          <li><strong>The layer other platforms integrate to.</strong> When agentic AI meets the enterprise, what wins is the layer that executes &mdash; not another co-pilot on the point-solution stack.</li>
         </ul>
         <p class="meaning">
-          <span class="meaning-prefix">What this means for you</span>
-          The gap between &ldquo;we need this&rdquo; and &ldquo;this is live and generating value&rdquo; gets shorter with every release &mdash; proven on one model, not a stack of point-solution integrations to re-justify each time.
+          <span class="meaning-prefix">What this means</span>
+          The endgame: viax is where AI actually executes enterprise business &mdash; and where every future AI-native platform integrates to meet the ERP.
         </p>
-        <div class="in-market">
-          <span class="in-market-label">In market now</span>
-          <p>Proof-of-value environments &middot; preconfigured motion templates &middot; investor- and buyer-ready configuration demos</p>
-        </div>
       </article>
 
     </div>
   </section>
 
   <!-- FOOTER -->
-  <footer class="doc-footer doc-footer--slim">
+  <footer class="doc-footer">
     <div class="footer-meta">
       <span class="tagline">AI reasons. viax executes. ERP records.</span>
-      <span>viax Platform Roadmap &middot; Outcome Pillars</span>
+      <span>viax Platform Roadmap &middot; For Investors</span>
     </div>
   </footer>
 
