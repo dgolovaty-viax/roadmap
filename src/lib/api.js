@@ -74,4 +74,13 @@ export const api = {
     generateEpic:  (title, context) => request('POST', '/api/ai/generate-epic',  { title, context }),
     suggestWsjf:   (epic)           => request('POST', '/api/ai/suggest-wsjf',   { epic }),
   },
+
+  // ── Suggested Ideas (from Granola meeting scans) ─────────────────────
+
+  suggestions: {
+    pending:  ()           => request('GET',   '/api/suggestions/pending'),
+    edit:     (id, patch)  => request('PATCH', `/api/suggestions/${id}`, patch),
+    accept:   (id, body)   => request('POST',  `/api/suggestions/${id}/accept`,  body || {}),
+    dismiss:  (id)         => request('POST',  `/api/suggestions/${id}/dismiss`),
+  },
 }

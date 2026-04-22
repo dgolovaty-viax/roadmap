@@ -490,6 +490,269 @@ def delete_idea(idea_id):
     return jsonify({"ok": True})
 
 
+# ── Meeting-scan → Idea Suggestions ────────────────────────────────────
+#
+# A nightly Cowork scheduled task reads new Granola meetings, asks Claude
+# to extract candidate ideas (with tag suggestions and near-duplicate
+# dedup against current ideas/epics), and posts them here. Dennis reviews
+# them in the "Suggested" inbox on the Ideas page and accepts or dismisses
+# each one.
+
+SCAN_API_SECRET = os.getenv("SCAN_API_SECRET")
+
+
+def _require_scan_auth():
+    if not SCAN_API_SECRET:
+        return ("SCAN_API_SECRET not configured on server", 503)
+    supplied = request.headers.get("X-Scan-Secret", "")
+    if supplied != SCAN_API_SECRET:
+        return ("Unauthorized", 401)
+    return None
+
+
+def _serialize_suggestion(row, tag_lookup):
+    """Decorate a raw idea_suggestions row with tag names for the frontend."""
+    existing_tag_ids = row.get("existing_tag_ids") or []
+    return {
+        **row,
+        "existing_tags": [
+            {"id": tid, "name": tag_lookup.get(tid, "")}
+            for tid in existing_tag_ids
+            if tag_lookup.get(tid)
+        ],
+    }
+
+
+@app.route("/api/suggestions/last-scan", methods=["GET"])
+def last_scan_timestamp():
+    """Most recent meeting_date we've processed — used by the scan task as
+    the cutoff for the next run. Returns {"cutoff": iso-string | null}."""
+    res = (
+        supabase.table("meeting_scans")
+        .select("meeting_date, processed_at")
+        .order("meeting_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not res.data:
+        return jsonify({"cutoff": None})
+    row = res.data[0]
+    return jsonify({"cutoff": row.get("meeting_date") or row.get("processed_at")})
+
+
+@app.route("/api/suggestions/scan", methods=["POST"])
+def ingest_scan():
+    """Called by the Cowork scan task. Body:
+      {
+        "granolaMeetingId": "...",
+        "meetingTitle":     "...",
+        "meetingUrl":       "...",
+        "meetingDate":      "2026-04-22T14:30:00Z",
+        "summaryTitle":     "...",
+        "summary":          "...",
+        "suggestions": [
+          { "title": "...", "description": "...",
+            "existingTagIds": ["uuid", ...],
+            "newTagNames":    ["name", ...] },
+          ...
+        ]
+      }
+    Auth: X-Scan-Secret header must match SCAN_API_SECRET env var.
+    Idempotent on granola_meeting_id — re-posting updates the scan row and
+    replaces its pending suggestions.
+    """
+    err = _require_scan_auth()
+    if err:
+        return jsonify({"error": err[0]}), err[1]
+
+    body                = request.get_json() or {}
+    granola_meeting_id  = (body.get("granolaMeetingId") or "").strip()
+    if not granola_meeting_id:
+        return jsonify({"error": "granolaMeetingId is required"}), 400
+
+    scan_row = {
+        "granola_meeting_id": granola_meeting_id,
+        "meeting_title":      body.get("meetingTitle"),
+        "meeting_url":        body.get("meetingUrl"),
+        "meeting_date":       body.get("meetingDate"),
+        "summary_title":      body.get("summaryTitle"),
+        "summary":            body.get("summary"),
+        "processed_at":       now(),
+    }
+    scan_res = (
+        supabase.table("meeting_scans")
+        .upsert(scan_row, on_conflict="granola_meeting_id")
+        .execute()
+    )
+    scan = scan_res.data[0] if scan_res.data else None
+    if not scan:
+        return jsonify({"error": "Failed to upsert meeting_scan"}), 500
+
+    # Replace pending suggestions for this scan — leave accepted/dismissed alone
+    supabase.table("idea_suggestions").delete().match({
+        "meeting_scan_id": scan["id"],
+        "status":          "pending",
+    }).execute()
+
+    suggestion_rows = []
+    for s in (body.get("suggestions") or []):
+        title = (s.get("title") or "").strip()
+        if not title:
+            continue
+        suggestion_rows.append({
+            "meeting_scan_id":       scan["id"],
+            "suggested_title":       title,
+            "suggested_description": (s.get("description") or "").strip(),
+            "existing_tag_ids":      s.get("existingTagIds") or [],
+            "new_tag_names":         s.get("newTagNames") or [],
+            "status":                "pending",
+        })
+
+    inserted = []
+    if suggestion_rows:
+        ins = supabase.table("idea_suggestions").insert(suggestion_rows).execute()
+        inserted = ins.data or []
+
+    return jsonify({"ok": True, "scan": scan, "suggestions": inserted}), 200
+
+
+@app.route("/api/suggestions/pending", methods=["GET"])
+def list_pending_suggestions():
+    """Feeds the 'Suggested' inbox on the Ideas page."""
+    sug_res = (
+        supabase.table("idea_suggestions")
+        .select("*, meeting_scans(id, granola_meeting_id, meeting_title, meeting_url, meeting_date, summary_title, summary)")
+        .eq("status", "pending")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    rows = sug_res.data or []
+
+    # Build a tag id → name lookup once
+    tag_ids = sorted({tid for r in rows for tid in (r.get("existing_tag_ids") or [])})
+    tag_lookup = {}
+    if tag_ids:
+        tags_res = supabase.table("idea_tags").select("id, name").in_("id", tag_ids).execute()
+        tag_lookup = {t["id"]: t["name"] for t in (tags_res.data or [])}
+
+    return jsonify([_serialize_suggestion(r, tag_lookup) for r in rows])
+
+
+@app.route("/api/suggestions/<suggestion_id>", methods=["PATCH"])
+def edit_suggestion(suggestion_id):
+    """Allow editing title/description/tags before accepting."""
+    body    = request.get_json() or {}
+    updates = {}
+    if "title" in body:
+        updates["suggested_title"] = (body["title"] or "").strip()
+    if "description" in body:
+        updates["suggested_description"] = (body["description"] or "").strip()
+    if "existingTagIds" in body:
+        updates["existing_tag_ids"] = body["existingTagIds"] or []
+    if "newTagNames" in body:
+        updates["new_tag_names"] = body["newTagNames"] or []
+    if not updates:
+        return jsonify({"error": "Nothing to update"}), 400
+    res = (
+        supabase.table("idea_suggestions")
+        .update(updates)
+        .eq("id", suggestion_id)
+        .execute()
+    )
+    return jsonify(res.data[0] if res.data else {"ok": True})
+
+
+@app.route("/api/suggestions/<suggestion_id>/dismiss", methods=["POST"])
+def dismiss_suggestion(suggestion_id):
+    res = (
+        supabase.table("idea_suggestions")
+        .update({"status": "dismissed", "reviewed_at": now()})
+        .eq("id", suggestion_id)
+        .execute()
+    )
+    return jsonify(res.data[0] if res.data else {"ok": True})
+
+
+@app.route("/api/suggestions/<suggestion_id>/accept", methods=["POST"])
+def accept_suggestion(suggestion_id):
+    """Turn a suggestion into a real idea.
+
+    Optional body overrides:
+      { "title": "...", "description": "...",
+        "existingTagIds": [...], "newTagNames": [...] }
+    """
+    body = request.get_json() or {}
+
+    sug = (
+        supabase.table("idea_suggestions")
+        .select("*")
+        .eq("id", suggestion_id)
+        .single()
+        .execute()
+    )
+    if not sug.data:
+        return jsonify({"error": "Suggestion not found"}), 404
+    if sug.data["status"] != "pending":
+        return jsonify({"error": f"Already {sug.data['status']}"}), 409
+
+    title          = (body.get("title")       or sug.data["suggested_title"] or "").strip()
+    description    = (body.get("description") or sug.data.get("suggested_description") or "").strip()
+    existing_ids   = body.get("existingTagIds") or sug.data.get("existing_tag_ids") or []
+    new_tag_names  = body.get("newTagNames")   or sug.data.get("new_tag_names")     or []
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+
+    # 1. Materialise any new tags (idempotent on name)
+    final_tag_ids = list(existing_ids)
+    for raw_name in new_tag_names:
+        name = (raw_name or "").strip()
+        if not name:
+            continue
+        existing = supabase.table("idea_tags").select("id, name").eq("name", name).execute()
+        if existing.data:
+            tid = existing.data[0]["id"]
+        else:
+            ins = supabase.table("idea_tags").insert({
+                "id":   str(uuid.uuid4()),
+                "name": name,
+            }).execute()
+            tid = ins.data[0]["id"]
+        if tid not in final_tag_ids:
+            final_tag_ids.append(tid)
+
+    # 2. Create the idea row
+    idea_id = str(uuid.uuid4())
+    supabase.table("ideas").upsert({
+        "id":          idea_id,
+        "title":       title,
+        "description": description,
+        "updated_at":  now(),
+    }, on_conflict="id").execute()
+
+    # 3. Attach tags via junction table
+    if final_tag_ids:
+        supabase.table("idea_tag_assignments").insert([
+            {"idea_id": idea_id, "tag_id": tid} for tid in final_tag_ids
+        ]).execute()
+
+    # 4. Mark suggestion accepted
+    supabase.table("idea_suggestions").update({
+        "status":             "accepted",
+        "reviewed_at":        now(),
+        "resulting_idea_id":  idea_id,
+    }).eq("id", suggestion_id).execute()
+
+    # 5. Return the fully hydrated idea (matches /api/ideas shape)
+    full = (
+        supabase.table("ideas")
+        .select(IDEA_SELECT)
+        .eq("id", idea_id)
+        .single()
+        .execute()
+    )
+    return jsonify({"ok": True, "idea": full.data}), 201
+
+
 # ── Health ─────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])

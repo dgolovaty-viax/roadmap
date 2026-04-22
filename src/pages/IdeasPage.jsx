@@ -247,9 +247,14 @@ function useIdeas() {
 function useTags() {
   const [tags, setTags] = useState([])
 
-  useEffect(() => {
-    api.ideaTags.list().then(data => setTags(data || [])).catch(() => {})
+  const reload = useCallback(async () => {
+    try {
+      const data = await api.ideaTags.list()
+      setTags(data || [])
+    } catch { /* non-fatal */ }
   }, [])
+
+  useEffect(() => { reload() }, [reload])
 
   const createTag = async (name) => {
     const tag = await api.ideaTags.create(name)
@@ -261,7 +266,7 @@ function useTags() {
     return tag
   }
 
-  return { tags, createTag }
+  return { tags, createTag, reload }
 }
 
 function useVoteSession() {
@@ -1114,9 +1119,268 @@ function VoteHistoryDetail({ session, onBack, onBackLabel }) {
 
 // ── Ideas Page ─────────────────────────────────────────────────────────
 
+// ── Suggestions inbox (from nightly Granola scan) ──────────────────────
+
+function formatMeetingDate(iso) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch { return '' }
+}
+
+function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, onReloadTags }) {
+  const existingTags  = suggestion.existing_tags || []
+  const [busy,     setBusy]       = useState(false)
+  const [editing,  setEditing]    = useState(false)
+  const [title,    setTitle]      = useState(suggestion.suggested_title || '')
+  const [desc,     setDesc]       = useState(suggestion.suggested_description || '')
+  const [selTags,  setSelTags]    = useState(existingTags)
+  const [newNames, setNewNames]   = useState(suggestion.new_tag_names || [])
+  const [error,    setError]      = useState(null)
+
+  const colorMap = useContext(TagColorContext)
+
+  function tagChip(tag, { proposed, onRemove } = {}) {
+    const palette = (tag.id && colorMap[tag.id]) ? colorMap[tag.id] : tagPalette(tag.name)
+    return (
+      <span key={`${tag.id || 'new'}:${tag.name}`} style={{
+        background: proposed ? '#FFFFFF' : palette.bg,
+        color:      palette.color,
+        border:     `1px ${proposed ? 'dashed' : 'solid'} ${palette.border}`,
+        borderRadius: 4, padding: '2px 8px', fontSize: 10, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+      }}>
+        {proposed && <span style={{ fontSize: 9, opacity: 0.6 }}>NEW</span>}
+        {tag.name}
+        {onRemove && (
+          <button onClick={onRemove}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: palette.color, fontSize: 12, padding: 0, lineHeight: 1, marginLeft: 2 }}>×</button>
+        )}
+      </span>
+    )
+  }
+
+  async function runAccept(overrides) {
+    setBusy(true); setError(null)
+    try {
+      await api.suggestions.accept(suggestion.id, overrides)
+      await onReloadTags?.()
+      onAccept(suggestion.id)
+    } catch (e) {
+      setError(e.message || String(e))
+      setBusy(false)
+    }
+  }
+
+  async function runDismiss() {
+    setBusy(true); setError(null)
+    try {
+      await api.suggestions.dismiss(suggestion.id)
+      onDismiss(suggestion.id)
+    } catch (e) {
+      setError(e.message || String(e)); setBusy(false)
+    }
+  }
+
+  async function saveEdits() {
+    await runAccept({
+      title,
+      description:     desc,
+      existingTagIds:  selTags.map(t => t.id).filter(Boolean),
+      newTagNames:     newNames,
+    })
+  }
+
+  return (
+    <div style={{
+      background: '#FFFFFF', border: '1px solid #E8E6E1', borderRadius: 10,
+      padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
+      opacity: busy ? 0.55 : 1,
+    }}>
+      {editing ? (
+        <>
+          <input value={title} onChange={e => setTitle(e.target.value)}
+            style={{ ...lightField, fontSize: 15, fontWeight: 600 }} />
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3}
+            style={{ ...lightField, resize: 'vertical', fontFamily: FONT }} />
+          <MultiTagSelector
+            selectedTags={selTags}
+            allTags={tags}
+            onAdd={t => setSelTags(prev => prev.find(x => x.id === t.id) ? prev : [...prev, t])}
+            onRemove={t => setSelTags(prev => prev.filter(x => x.id !== t.id))}
+            onCreateAndAdd={async name => {
+              const t = await onCreateTag(name)
+              setSelTags(prev => prev.find(x => x.id === t.id) ? prev : [...prev, t])
+              setNewNames(prev => prev.filter(n => n.toLowerCase() !== name.toLowerCase()))
+              return t
+            }}
+          />
+          {newNames.length > 0 && (
+            <div style={{ fontSize: 11, color: '#888' }}>
+              Proposed new tags (will be created on accept):&nbsp;
+              {newNames.map((n, i) => (
+                <span key={n} style={{ fontWeight: 700 }}>
+                  {i > 0 && ', '}
+                  {n}
+                  <button onClick={() => setNewNames(p => p.filter(x => x !== n))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', marginLeft: 4 }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditing(false)} style={btn('#FFFFFF', '#555', '#E2E0DC')} disabled={busy}>Cancel</button>
+            <button onClick={saveEdits} style={btn('#4FD0A5', '#1E1E1E')} disabled={busy || !title.trim()}>
+              {busy ? 'Saving…' : 'Save & accept'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1E1E1E', lineHeight: 1.3 }}>
+            {suggestion.suggested_title}
+          </div>
+          {suggestion.suggested_description && (
+            <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5 }}>
+              {suggestion.suggested_description}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {existingTags.map(t => tagChip(t))}
+            {(suggestion.new_tag_names || []).map(n => tagChip({ name: n }, { proposed: true }))}
+          </div>
+          {error && <div style={{ fontSize: 12, color: '#C92A2A' }}>⚠ {error}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={runDismiss} style={btn('#FFFFFF', '#888', '#E2E0DC')} disabled={busy}>Dismiss</button>
+            <button onClick={() => setEditing(true)} style={btn('#FFFFFF', '#555', '#E2E0DC')} disabled={busy}>Edit</button>
+            <button onClick={() => runAccept({})} style={btn('#4FD0A5', '#1E1E1E')} disabled={busy}>
+              {busy ? 'Adding…' : 'Accept'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SuggestionsInbox({ tags, onCreateTag, onAccepted, onReloadTags }) {
+  const [suggestions, setSuggestions] = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [expanded,    setExpanded]    = useState(true)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.suggestions.pending()
+      setSuggestions(data || [])
+    } catch (e) {
+      console.error('Failed to load suggestions', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const removeLocal = id => setSuggestions(prev => prev.filter(s => s.id !== id))
+
+  // Group suggestions by meeting_scan_id so we only show one source context per meeting
+  const grouped = useMemo(() => {
+    const map = new Map()
+    for (const s of suggestions) {
+      const scan = s.meeting_scans || {}
+      const key  = scan.id || s.meeting_scan_id
+      if (!map.has(key)) map.set(key, { scan, items: [] })
+      map.get(key).items.push(s)
+    }
+    return [...map.values()]
+  }, [suggestions])
+
+  if (loading || suggestions.length === 0) return null
+
+  return (
+    <div style={{
+      background: '#F3F9F6', border: '1px solid #BFE5D4', borderRadius: 10,
+      padding: 16, marginBottom: 20,
+    }}>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          fontFamily: FONT, color: '#1a7a5e',
+        }}
+      >
+        <span style={{ fontSize: 18 }}>✨</span>
+        <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.02em' }}>
+          Suggested ideas from meetings
+        </span>
+        <span style={{
+          background: '#4FD0A5', color: '#1E1E1E',
+          borderRadius: 10, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+        }}>{suggestions.length}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 13, color: '#1a7a5e' }}>{expanded ? '▾' : '▸'}</span>
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {grouped.map(({ scan, items }) => (
+            <div key={scan.id} style={{
+              background: '#FFFFFF', border: '1px solid #E8E6E1', borderRadius: 10, padding: 14,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                  Meeting
+                </span>
+                <span style={{ fontSize: 14, color: '#1E1E1E', fontWeight: 600 }}>
+                  {scan.meeting_title || 'Untitled meeting'}
+                </span>
+                {scan.meeting_date && (
+                  <span style={{ fontSize: 12, color: '#AAA' }}>· {formatMeetingDate(scan.meeting_date)}</span>
+                )}
+                {scan.meeting_url && (
+                  <a href={scan.meeting_url} target="_blank" rel="noreferrer"
+                    style={{ fontSize: 12, color: '#1a7a5e', marginLeft: 'auto' }}>
+                    Open in Granola ↗
+                  </a>
+                )}
+              </div>
+              {scan.summary_title && (
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '4px 0 2px 0' }}>
+                  {scan.summary_title}
+                </div>
+              )}
+              {scan.summary && (
+                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 12 }}>
+                  {scan.summary}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                {items.map(s => (
+                  <SuggestionCard
+                    key={s.id}
+                    suggestion={s}
+                    tags={tags}
+                    onCreateTag={onCreateTag}
+                    onReloadTags={onReloadTags}
+                    onAccept={id => { removeLocal(id); onAccepted?.() }}
+                    onDismiss={id => { removeLocal(id) }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function IdeasPage() {
-  const { ideas, loading, upsert, remove, removeMany } = useIdeas()
-  const { tags, createTag }                             = useTags()
+  const { ideas, loading, upsert, remove, removeMany, reload: reloadIdeas } = useIdeas()
+  const { tags, createTag, reload: reloadTags }         = useTags()
   const {
     session, votes, loadingSession, showResults,
     startSession, closeSession, refreshVotes, dismissResults,
@@ -1358,6 +1622,14 @@ export default function IdeasPage() {
         /* ── Normal list view ── */
         ) : (
           <>
+            {/* Suggested ideas from nightly Granola scan */}
+            <SuggestionsInbox
+              tags={tags}
+              onCreateTag={createTag}
+              onReloadTags={reloadTags}
+              onAccepted={reloadIdeas}
+            />
+
             {/* Voting banner */}
             {session?.status === 'open' && (
               <VotingBanner
