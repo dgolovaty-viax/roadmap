@@ -12,6 +12,12 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "*"))
 
+# Register the MCP server blueprint (mounts POST /mcp). Tools re-use the
+# view functions defined below via late binding, so this import is safe
+# even though mcp_server.py pulls names from this module at call time.
+from mcp_server import bp as mcp_bp  # noqa: E402
+app.register_blueprint(mcp_bp)
+
 
 # ── Clients ────────────────────────────────────────────────────────────
 

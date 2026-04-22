@@ -5,24 +5,29 @@ at new Granola meetings since the last run and extract candidate ideas for the
 Ideas board. A human will review and accept/dismiss them — your job is to
 produce good candidates, not to be conservative.
 
-## Config (baked into this prompt)
+## How the roadmap backend is reached
 
-- Backend URL: `https://roadmap-production-2306.up.railway.app`
-- Scan secret (used for the `X-Scan-Secret` header on POSTs): `<SCAN_API_SECRET value>`
+The backend is exposed to this task as a **remote MCP connector** named
+`viax-roadmap`, not as a raw HTTP API. You will see these tools available in
+your environment:
 
-The scan secret is embedded directly in the scheduled task's prompt rather
-than read from a file, because the task runs in a fresh Cowork session each
-time and session-local file paths are not portable across runs. If you rotate
-the secret, update both the Railway env var AND this prompt. All HTTP calls
-below use the backend URL as the base; POSTs to `/api/suggestions/scan` send
-`X-Scan-Secret: <value>`.
+- `get_last_scan`     — returns `{cutoff: iso-string | null}`
+- `list_ideas`        — returns array of existing ideas (id, title, description, idea_tag_assignments)
+- `list_epics`        — returns array of existing epics (id, title, sections)
+- `list_idea_tags`    — returns array of `{id, name}` tags
+- `post_scan`         — posts one meeting's summary + suggestions
+
+All calls are authenticated by the connector itself; you never need to pass a
+secret or base URL. If these tools are missing from your environment, stop and
+report that the `viax-roadmap` connector isn't installed — do NOT fall back to
+raw HTTP.
 
 ## Step 1 — determine the cutoff
 
-GET `{backendUrl}/api/suggestions/last-scan` — it returns `{"cutoff": iso-string | null}`.
-This is the most recent meeting_date we've already processed. If `cutoff` is
-`null`, treat "last 7 days" as the window. Otherwise, look only at meetings
-with `meeting_date > cutoff`.
+Call `get_last_scan`. It returns `{"cutoff": iso-string | null}`. This is the
+most recent meeting_date we've already processed. If `cutoff` is `null`, treat
+"last 7 days" as the window. Otherwise, look only at meetings with
+`meeting_date > cutoff`.
 
 ## Step 2 — list candidate meetings
 
@@ -36,9 +41,9 @@ meetings, stop and report that you had nothing to process.
 Before analyzing transcripts, fetch the current idea and epic lists so you can
 dedupe against work that's already on the board:
 
-- GET `{backendUrl}/api/ideas` — returns `[{id, title, description, idea_tag_assignments: [{idea_tags: {id, name}}], …}]`
-- GET `{backendUrl}/api/epics` — returns `[{id, title, …}]`
-- GET `{backendUrl}/api/idea-tags` — returns `[{id, name}]` (used to prefer existing tags)
+- `list_ideas` — existing ideas with tag assignments
+- `list_epics` — existing epics
+- `list_idea_tags` — existing tags (used to prefer existing tags when tagging new ideas)
 
 Keep these in memory for the rest of the run.
 
@@ -69,9 +74,7 @@ For each new meeting:
 
 ## Step 5 — post to the backend
 
-For EACH meeting (one POST per meeting), call
-`POST {backendUrl}/api/suggestions/scan` with header
-`X-Scan-Secret: <scanSecret>` and body:
+For EACH meeting (one `post_scan` call per meeting), invoke the MCP tool with:
 
 ```json
 {
@@ -92,17 +95,18 @@ For EACH meeting (one POST per meeting), call
 }
 ```
 
-The endpoint is idempotent on `granolaMeetingId` — if a run fails partway and
-is retried, re-POSTing the same meeting will replace its pending suggestions
+The call is idempotent on `granolaMeetingId` — if a run fails partway and is
+retried, re-posting the same meeting will replace its pending suggestions
 (accepted/dismissed ones are preserved).
 
-If the backend responds non-2xx, log the status and body and continue to the
-next meeting. Do not retry aggressively — the task will run again tomorrow.
+If `post_scan` returns `isError: true` or the embedded payload indicates
+failure, log the error text and continue to the next meeting. Do not retry
+aggressively — the task will run again tomorrow.
 
 ## Step 6 — summarize what you did
 
 At the end, write a brief report: number of meetings processed, total
-suggestions posted, any meetings that were skipped (and why), any HTTP errors.
+suggestions posted, any meetings that were skipped (and why), any tool errors.
 This shows up in the scheduled-task run log so Dennis can spot failures.
 
 ## Constraints
@@ -114,4 +118,4 @@ This shows up in the scheduled-task run log so Dennis can spot failures.
 - Write titles and descriptions in viax's declarative voice: direct, no
   hedging, active verbs. No "we could" / "might want to" / "should consider".
 - Never mention internal metadata (meeting IDs, timestamps) in the idea copy —
-  that belongs only in the scan payload fields, not in the idea description.
+  that belongs only in the `post_scan` payload fields, not in the idea description.
