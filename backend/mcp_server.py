@@ -13,7 +13,14 @@ Tools exposed:
   - list_idea_tags    → GET  /api/idea-tags
   - post_scan         → POST /api/suggestions/scan
 
-Auth: every request to /mcp requires "Authorization: Bearer <SCAN_API_SECRET>".
+Auth: /mcp is intentionally unauthenticated so Cowork's custom-connector UI
+(which is OAuth-only) can connect without requiring a full OAuth 2.1 flow on
+the server. Protection is URL obscurity — the Railway subdomain is not
+published anywhere — plus the narrow blast radius of the exposed tools
+(read-only listing and posting to a suggestions inbox that is manually
+reviewed). The downstream write endpoint /api/suggestions/scan still requires
+X-Scan-Secret, which post_scan promotes internally from the server's env var.
+
 Stateless: no session IDs, no SSE streaming. Responses are plain JSON.
 
 Spec followed: MCP 2025-03-26 (Streamable HTTP, stateless JSON mode).
@@ -46,18 +53,6 @@ def tool(name: str, description: str, input_schema: dict):
         }
         return fn
     return decorator
-
-
-# ── Auth ───────────────────────────────────────────────────────────────
-
-def _require_bearer():
-    secret = os.getenv("SCAN_API_SECRET")
-    if not secret:
-        return _jsonrpc_error(None, -32000, "SCAN_API_SECRET not configured on server"), 503
-    auth = request.headers.get("Authorization", "")
-    if auth != f"Bearer {secret}":
-        return _jsonrpc_error(None, -32001, "Unauthorized"), 401
-    return None
 
 
 # ── JSON-RPC helpers ───────────────────────────────────────────────────
@@ -309,11 +304,6 @@ def _handle_message(msg):
 
 @bp.route("/mcp", methods=["POST"])
 def mcp_post():
-    auth_err = _require_bearer()
-    if auth_err is not None:
-        body, status = auth_err
-        return jsonify(body), status
-
     try:
         payload = request.get_json(force=True)
     except Exception:
