@@ -47,6 +47,33 @@ dedupe against work that's already on the board:
 
 Keep these in memory for the rest of the run.
 
+### Step 3a — also pull in-progress and recently-completed Jira work
+
+Once an idea is ready for the team, it leaves the roadmap and lives in Jira.
+The scan must dedupe against that work too — never re-suggest something the
+team is already building or just shipped.
+
+Use the Atlassian MCP (`searchJiraIssuesUsingJql`) on the `VX` project. The
+JQL is:
+
+```
+project = VX AND (
+  (statusCategory != Done AND status != "Backlog")
+  OR
+  (statusCategory = Done AND resolved >= -60d)
+)
+```
+
+This covers everything other than the backlog (because backlog items haven't
+been actively picked up yet) plus anything closed in the last 60 days.
+
+For each issue, capture `summary` and `description`. Hold these alongside the
+ideas/epics from above as a third dedup pool. Page through results if Jira
+returns them in batches.
+
+If the Atlassian MCP isn't available, log a warning, proceed without the Jira
+pool, and note it in the final report — don't fail the run.
+
 ## Step 4 — analyze each meeting
 
 For each new meeting:
@@ -58,10 +85,12 @@ For each new meeting:
 3. Extract every distinct idea that came up in the meeting that could plausibly
    become a product idea on the roadmap. No cap on count — but each one must be
    a distinct, stand-alone idea (not a variant or restatement of another).
-4. For each candidate idea, compare it against the existing ideas AND epics
-   fetched in Step 3. If it is substantially the same (title or description
-   clearly overlaps with an existing item), **drop** it. Err on the side of
-   dropping when in doubt.
+4. For each candidate idea, compare it against the existing ideas, epics,
+   AND in-progress/recently-closed Jira issues fetched in Step 3 / 3a. If it
+   is substantially the same (title or description clearly overlaps with any
+   item in any of those three pools), **drop** it. Err on the side of
+   dropping when in doubt — the team is either already building it or just
+   shipped it.
 5. For each surviving candidate, produce:
    - `title` — 4–10 words, noun phrase, in viax voice (direct, declarative)
    - `description` — 2–4 sentences. Start with the problem or the value, not
@@ -111,8 +140,8 @@ This shows up in the scheduled-task run log so Dennis can spot failures.
 
 ## Constraints
 
-- Do NOT post suggestions that are substantially the same as existing ideas or
-  epics. Dedup is your responsibility.
+- Do NOT post suggestions that are substantially the same as existing ideas,
+  epics, or open/recently-closed Jira issues in VX. Dedup is your responsibility.
 - Prefer existing tags. Propose new tags sparingly.
 - Be specific to what was said — generic "improve UX" suggestions are noise.
 - Write titles and descriptions in viax's declarative voice: direct, no

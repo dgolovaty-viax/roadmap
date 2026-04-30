@@ -1131,13 +1131,14 @@ function formatMeetingDate(iso) {
 
 function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, onReloadTags }) {
   const existingTags  = suggestion.existing_tags || []
-  const [busy,     setBusy]       = useState(false)
-  const [editing,  setEditing]    = useState(false)
-  const [title,    setTitle]      = useState(suggestion.suggested_title || '')
-  const [desc,     setDesc]       = useState(suggestion.suggested_description || '')
-  const [selTags,  setSelTags]    = useState(existingTags)
-  const [newNames, setNewNames]   = useState(suggestion.new_tag_names || [])
-  const [error,    setError]      = useState(null)
+  const [busy,           setBusy]          = useState(false)
+  const [editing,        setEditing]       = useState(false)
+  const [title,          setTitle]         = useState(suggestion.suggested_title || '')
+  const [desc,           setDesc]          = useState(suggestion.suggested_description || '')
+  const [selTags,        setSelTags]       = useState(existingTags)
+  const [newNames,       setNewNames]      = useState(suggestion.new_tag_names || [])
+  const [editingNewIdx,  setEditingNewIdx] = useState(null)  // index of newTagName being inline-edited, or null
+  const [error,          setError]         = useState(null)
 
   const colorMap = useContext(TagColorContext)
 
@@ -1218,16 +1219,48 @@ function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, on
             }}
           />
           {newNames.length > 0 && (
-            <div style={{ fontSize: 11, color: '#888' }}>
-              Proposed new tags (will be created on accept):&nbsp;
-              {newNames.map((n, i) => (
-                <span key={n} style={{ fontWeight: 700 }}>
-                  {i > 0 && ', '}
-                  {n}
-                  <button onClick={() => setNewNames(p => p.filter(x => x !== n))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', marginLeft: 4 }}>×</button>
-                </span>
-              ))}
+            <div style={{ fontSize: 11, color: '#888', lineHeight: 1.8 }}>
+              Proposed new tags (click a name to rename, will be created on accept):&nbsp;
+              {newNames.map((n, i) => {
+                const commitEdit = (raw) => {
+                  const v = (raw || '').trim()
+                  if (v) setNewNames(p => p.map((x, idx) => idx === i ? v : x))
+                  setEditingNewIdx(null)
+                }
+                return (
+                  <span key={i} style={{ fontWeight: 700, marginRight: 4 }}>
+                    {i > 0 && ', '}
+                    {editingNewIdx === i ? (
+                      <input
+                        autoFocus
+                        defaultValue={n}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter')        { commitEdit(e.currentTarget.value); e.preventDefault() }
+                          else if (e.key === 'Escape')  { setEditingNewIdx(null);            e.preventDefault() }
+                        }}
+                        onBlur={e => commitEdit(e.currentTarget.value)}
+                        style={{
+                          fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
+                          padding: '1px 5px', border: '1px solid #BBB', borderRadius: 3,
+                          color: '#1E1E1E',
+                          width: `${Math.max(8, n.length + 2)}ch`,
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onClick={() => setEditingNewIdx(i)}
+                        title="Click to rename"
+                        style={{ cursor: 'text', borderBottom: '1px dashed #BBB' }}
+                      >
+                        {n}
+                      </span>
+                    )}
+                    <button onClick={() => setNewNames(p => p.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', marginLeft: 4 }}
+                      title="Remove">×</button>
+                  </span>
+                )
+              })}
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
