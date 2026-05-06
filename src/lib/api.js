@@ -26,9 +26,10 @@ export const api = {
   // ── Ideas ───────────────────────────────────────────────────────────
 
   ideas: {
-    list:   ()     => request('GET',    '/api/ideas'),
-    upsert: (idea) => request('POST',   '/api/ideas', idea),
-    delete: (id)   => request('DELETE', `/api/ideas/${id}`),
+    list:             ()              => request('GET',    '/api/ideas'),
+    upsert:           (idea)          => request('POST',   '/api/ideas', idea),
+    delete:           (id)            => request('DELETE', `/api/ideas/${id}`),
+    setForAnotherDay: (id, value)     => request('PATCH',  `/api/ideas/${id}/for-another-day`, { forAnotherDay: !!value }),
   },
 
   // ── Idea Tags ────────────────────────────────────────────────────────

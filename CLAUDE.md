@@ -83,6 +83,7 @@ Live at: **https://roadmap-viax.vercel.app**
 | title | text | |
 | description | text | |
 | tag_id | uuid | FK → idea_tags |
+| for_another_day | bool | default `false`. When true, idea sits on the "For another day" tab and is excluded from voting. |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 

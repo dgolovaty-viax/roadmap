@@ -241,7 +241,14 @@ function useIdeas() {
     setIdeas(prev => prev.filter(i => !ids.includes(i.id)))
   }
 
-  return { ideas, loading, upsert, remove, removeMany, reload: load }
+  const setForAnotherDay = async (id, value) => {
+    const saved = await api.ideas.setForAnotherDay(id, value)
+    const normalized = { ...saved, tags: normalizeTags(saved) }
+    setIdeas(prev => prev.map(i => i.id === id ? normalized : i))
+    return normalized
+  }
+
+  return { ideas, loading, upsert, remove, removeMany, setForAnotherDay, reload: load }
 }
 
 function useTags() {
@@ -616,10 +623,22 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd, onToggleParked, parked }) {
   const [hovered, setHovered] = useState(false)
+  const [busyToggle, setBusyToggle] = useState(false)
   const tags = idea.tags || []
   const preview = (idea.description || '').trim().slice(0, 140)
+
+  const handleTogglePark = async (e) => {
+    e.stopPropagation()
+    if (!onToggleParked || busyToggle) return
+    setBusyToggle(true)
+    try {
+      await onToggleParked(idea.id, !parked)
+    } finally {
+      setBusyToggle(false)
+    }
+  }
 
   return (
     <div
@@ -632,6 +651,7 @@ function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart,
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       style={{
+        position: 'relative',
         background: '#FFFFFF',
         border: dragOver ? '2px solid #4FD0A5' : isDuplicate ? '1px solid #FFD966' : '1px solid #E2E0DC',
         borderRadius: 8,
@@ -645,6 +665,25 @@ function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart,
         minWidth: 0,
       }}
     >
+      {/* Quick park / unpark action — appears on hover */}
+      {onToggleParked && (hovered || busyToggle) && (
+        <button
+          onClick={handleTogglePark}
+          disabled={busyToggle}
+          title={parked ? 'Move back to active ideas' : 'Park for another day'}
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            background: '#FFFFFF', border: '1px solid #E2E0DC',
+            borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600,
+            color: '#555555', cursor: busyToggle ? 'wait' : 'pointer',
+            fontFamily: FONT, opacity: busyToggle ? 0.6 : 0.95,
+            display: 'inline-flex', alignItems: 'center', gap: 4, lineHeight: 1.2,
+          }}
+        >
+          {parked ? '↩ Activate' : '💤 Park'}
+        </button>
+      )}
+
       {/* Upper content — grows to fill cell, pushes tags to bottom */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* drag handle + title */}
@@ -690,7 +729,7 @@ function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart,
 
 // ── CreateModal ────────────────────────────────────────────────────────
 
-function CreateModal({ tags, onCreateTag, onSave, onClose }) {
+function CreateModal({ tags, onCreateTag, onSave, onClose, parked }) {
   const [title, setTitle]             = useState('')
   const [description, setDescription] = useState('')
   const [selectedTags, setSelectedTags] = useState([])
@@ -726,7 +765,12 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{ background: '#FFFFFF', borderRadius: 12, padding: '32px 36px', width: '100%', maxWidth: 560, fontFamily: FONT, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1E1E1E', margin: '0 0 24px 0' }}>New Idea</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1E1E1E', margin: '0 0 6px 0' }}>New Idea</h2>
+        {parked && (
+          <p style={{ fontSize: 12, color: '#996600', margin: '0 0 18px 0' }}>
+            💤 This idea will be added to <strong>For another day</strong>.
+          </p>
+        )}
 
         <div style={{ marginBottom: 18 }}>
           <label style={fieldLabel}>Title *</label>
@@ -780,10 +824,12 @@ function CreateModal({ tags, onCreateTag, onSave, onClose }) {
 
 // ── IdeaDetail ─────────────────────────────────────────────────────────
 
-function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote, duplicates = [], onSelectIdea }) {
+function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBack, onPromote, onToggleParked, duplicates = [], onSelectIdea }) {
   const [idea, setIdea]         = useState(initial)
   const [selectedTags, setSelectedTags] = useState(initial.tags || [])
   const [editing, setEditing]   = useState(false)
+  const [parking, setParking]   = useState(false)
+  const parked = !!initial.for_another_day
 
   const handleSave = async () => {
     await onSave({ ...idea, tagIds: selectedTags.map(t => t.id) })
@@ -833,7 +879,21 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <>
               <button onClick={handleDelete} style={btn('#FFF0F0', '#CC3333', '#FFCCCC')}>Delete</button>
               <button onClick={() => setEditing(true)} style={btn('#1E1E1E', '#FFFFFF')}>Edit</button>
-              {onPromote && (
+              {onToggleParked && (
+                <button
+                  onClick={async () => {
+                    if (parking) return
+                    setParking(true)
+                    try { await onToggleParked(idea.id, !parked) }
+                    finally { setParking(false) }
+                  }}
+                  disabled={parking}
+                  style={{ ...btn('#FFFFFF', '#555555', '#DDDDDD'), opacity: parking ? 0.6 : 1 }}
+                >
+                  {parking ? 'Saving…' : parked ? '↩ Move to Active Ideas' : '💤 Park for another day'}
+                </button>
+              )}
+              {onPromote && !parked && (
                 <button
                   onClick={() => {
                     if (window.confirm(`Move "${idea.title}" to Planning? It will be converted to an epic and removed from Ideas.`)) {
@@ -877,13 +937,21 @@ function IdeaDetail({ initial, tags, saving, onCreateTag, onSave, onDelete, onBa
             <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 600, margin: '0 0 14px 0', lineHeight: 1.3 }}>
               {idea.title || <span style={{ color: '#555555', fontStyle: 'italic' }}>Untitled Idea</span>}
             </h2>
-            {selectedTags.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {selectedTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)}
-              </div>
-            ) : (
-              <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tags</span>
-            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {parked && (
+                <span style={{
+                  background: '#3A2E1A', color: '#FFD966', border: '1px solid #6B5028',
+                  borderRadius: 4, padding: '3px 9px', fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.07em', textTransform: 'uppercase',
+                }}>
+                  💤 For another day
+                </span>
+              )}
+              {selectedTags.length > 0
+                ? selectedTags.map(t => <TagBadge key={t.id} id={t.id} name={t.name} />)
+                : !parked && <span style={{ fontSize: 12, color: '#555555', fontStyle: 'italic' }}>No tags</span>
+              }
+            </div>
           </>
         )}
       </div>
@@ -1194,6 +1262,10 @@ function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, on
     })
   }
 
+  async function acceptForAnotherDay() {
+    await runAccept({ forAnotherDay: true })
+  }
+
   return (
     <div style={{
       background: '#FFFFFF', border: '1px solid #E8E6E1', borderRadius: 10,
@@ -1285,9 +1357,17 @@ function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, on
             {(suggestion.new_tag_names || []).map(n => tagChip({ name: n }, { proposed: true }))}
           </div>
           {error && <div style={{ fontSize: 12, color: '#C92A2A' }}>⚠ {error}</div>}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
             <button onClick={runDismiss} style={btn('#FFFFFF', '#888', '#E2E0DC')} disabled={busy}>Dismiss</button>
             <button onClick={() => setEditing(true)} style={btn('#FFFFFF', '#555', '#E2E0DC')} disabled={busy}>Edit</button>
+            <button
+              onClick={acceptForAnotherDay}
+              style={btn('#FFF8E6', '#996600', '#FFD966')}
+              disabled={busy}
+              title="Accept this idea but park it on the 'For another day' list"
+            >
+              💤 For another day
+            </button>
             <button onClick={() => runAccept({})} style={btn('#4FD0A5', '#1E1E1E')} disabled={busy}>
               {busy ? 'Adding…' : 'Accept'}
             </button>
@@ -1412,13 +1492,15 @@ function SuggestionsInbox({ tags, onCreateTag, onAccepted, onReloadTags }) {
 }
 
 export default function IdeasPage() {
-  const { ideas, loading, upsert, remove, removeMany, reload: reloadIdeas } = useIdeas()
+  const { ideas, loading, upsert, remove, removeMany, setForAnotherDay, reload: reloadIdeas } = useIdeas()
   const { tags, createTag, reload: reloadTags }         = useTags()
   const {
     session, votes, loadingSession, showResults,
     startSession, closeSession, refreshVotes, dismissResults,
   } = useVoteSession()
 
+  // 'active' = regular ideas, 'parked' = "For another day"
+  const [view, setView]                     = useState('active')
   const [activeTags, setActiveTags]         = useState(new Set())
   const [searchQuery, setSearchQuery]       = useState('')
   const [selectedId, setSelectedId]         = useState(null)
@@ -1464,10 +1546,16 @@ export default function IdeasPage() {
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
-  const usedTagIds = [...new Set(ideas.flatMap(i => (i.tags || []).map(t => t.id)))]
+  // Split into active vs "For another day" up front
+  const activeIdeas = useMemo(() => ideas.filter(i => !i.for_another_day), [ideas])
+  const parkedIdeas = useMemo(() => ideas.filter(i =>  i.for_another_day), [ideas])
+  const viewIdeas   = view === 'parked' ? parkedIdeas : activeIdeas
+
+  const usedTagIds = [...new Set(viewIdeas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
 
-  // Potential duplicates — computed once per ideas change
+  // Potential duplicates — computed across ALL ideas so we can flag a
+  // newly-created idea even if a similar one is already parked.
   const duplicateMap = useMemo(() => buildDuplicateMap(ideas), [ideas])
   const duplicateIds = useMemo(() => new Set(duplicateMap.keys()), [duplicateMap])
 
@@ -1479,8 +1567,8 @@ export default function IdeasPage() {
     return map
   }, [tags])
   const filtered = (activeTags.size > 0
-    ? ideas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
-    : ideas
+    ? viewIdeas.filter(i => (i.tags || []).some(t => activeTags.has(t.id)))
+    : viewIdeas
   ).filter(i => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return true
@@ -1586,6 +1674,10 @@ export default function IdeasPage() {
     setSelectedId(null)
   }
 
+  const handleToggleParked = async (ideaId, value) => {
+    await setForAnotherDay(ideaId, value)
+  }
+
   return (
     <TagColorContext.Provider value={tagColorMap}>
     <div style={{ minHeight: '100vh', background: '#F8F7F6', paddingTop: 56, fontFamily: FONT }}>
@@ -1639,6 +1731,7 @@ export default function IdeasPage() {
             onDelete={handleDelete}
             onBack={() => setSelectedId(null)}
             onPromote={handlePromoteSingle}
+            onToggleParked={handleToggleParked}
             duplicates={duplicateMap.get(selected.id) || []}
             onSelectIdea={setSelectedId}
           />
@@ -1662,6 +1755,41 @@ export default function IdeasPage() {
               onReloadTags={reloadTags}
               onAccepted={reloadIdeas}
             />
+
+            {/* Active vs "For another day" tabs */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #E2E0DC' }}>
+              {[
+                { key: 'active', label: 'Active',          count: activeIdeas.length },
+                { key: 'parked', label: 'For another day', count: parkedIdeas.length },
+              ].map(tab => {
+                const isActive = view === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => { setView(tab.key); setActiveTags(new Set()); setSearchQuery('') }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: '10px 18px', fontFamily: FONT,
+                      fontSize: 14, fontWeight: 600,
+                      color: isActive ? '#1E1E1E' : '#888888',
+                      borderBottom: `2px solid ${isActive ? '#1E1E1E' : 'transparent'}`,
+                      marginBottom: -1,
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      transition: 'color 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    {tab.key === 'parked' && <span aria-hidden>💤</span>}
+                    {tab.label}
+                    <span style={{
+                      background: isActive ? '#1E1E1E' : '#F0F0EE',
+                      color:      isActive ? '#FFFFFF' : '#888888',
+                      borderRadius: 10, padding: '1px 8px',
+                      fontSize: 11, fontWeight: 700,
+                    }}>{tab.count}</span>
+                  </button>
+                )
+              })}
+            </div>
 
             {/* Voting banner */}
             {session?.status === 'open' && (
@@ -1749,7 +1877,7 @@ export default function IdeasPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                {(!session || session.status === 'closed') && !loadingSession && (
+                {view === 'active' && (!session || session.status === 'closed') && !loadingSession && (
                   <button
                     onClick={handleStartVoting}
                     disabled={startingVote}
@@ -1758,14 +1886,18 @@ export default function IdeasPage() {
                     {startingVote ? 'Starting…' : '🗳 Start voting'}
                   </button>
                 )}
-                <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>+ New Idea</button>
+                <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>
+                  {view === 'parked' ? '+ New (For Another Day)' : '+ New Idea'}
+                </button>
               </div>
             </div>
 
             {/* Count */}
             <p style={{ fontSize: 13, color: '#AAAAAA', margin: '0 0 20px 0' }}>
               {loading ? 'Loading…' : filtered.length === 0
-                ? (searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search' : 'No ideas yet')
+                ? (searchQuery.trim() || activeTags.size > 0
+                    ? 'No ideas match your search'
+                    : view === 'parked' ? 'Nothing parked yet' : 'No ideas yet')
                 : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
               }
             </p>
@@ -1774,11 +1906,15 @@ export default function IdeasPage() {
             {!loading && (
               filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                  <div style={{ fontSize: 36, marginBottom: 14 }}>💡</div>
+                  <div style={{ fontSize: 36, marginBottom: 14 }}>{view === 'parked' ? '💤' : '💡'}</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>
-                    {searchQuery.trim() || activeTags.size > 0 ? 'No ideas match your search.' : 'No ideas yet. Add the first one.'}
+                    {searchQuery.trim() || activeTags.size > 0
+                      ? 'No ideas match your search.'
+                      : view === 'parked'
+                        ? 'Nothing here yet. Park an active idea — or accept a meeting suggestion as "For another day" — to keep it for later.'
+                        : 'No ideas yet. Add the first one.'}
                   </p>
-                  {!searchQuery.trim() && activeTags.size === 0 && (
+                  {!searchQuery.trim() && activeTags.size === 0 && view === 'active' && (
                     <button
                       onClick={() => setShowCreate(true)}
                       style={{ ...btn('#1E1E1E', '#FFFFFF'), padding: '10px 24px', fontSize: 14 }}
@@ -1797,6 +1933,8 @@ export default function IdeasPage() {
                       dragging={draggedId === idea.id}
                       dragOver={dragOverId === idea.id && draggedId !== idea.id}
                       isDuplicate={duplicateIds.has(idea.id)}
+                      parked={view === 'parked'}
+                      onToggleParked={handleToggleParked}
                       onDragStart={() => handleDragStart(idea.id)}
                       onDragOver={e => handleDragOver(e, idea.id)}
                       onDrop={() => handleDrop(idea.id)}
@@ -1815,8 +1953,9 @@ export default function IdeasPage() {
         <CreateModal
           tags={tags}
           onCreateTag={createTag}
-          onSave={handleSave}
+          onSave={(idea) => handleSave({ ...idea, forAnotherDay: view === 'parked' })}
           onClose={() => setShowCreate(false)}
+          parked={view === 'parked'}
         />
       )}
     </div>

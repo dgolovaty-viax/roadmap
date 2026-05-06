@@ -477,6 +477,8 @@ def upsert_idea():
         "description": body.get("description", ""),
         "updated_at":  now(),
     }
+    if "forAnotherDay" in body:
+        row["for_another_day"] = bool(body.get("forAnotherDay"))
     supabase.table("ideas").upsert(row, on_conflict="id").execute()
 
     # Sync tags via junction table
@@ -486,6 +488,23 @@ def upsert_idea():
         assignments = [{"idea_id": idea_id, "tag_id": tid} for tid in tag_ids]
         supabase.table("idea_tag_assignments").insert(assignments).execute()
 
+    full = supabase.table("ideas").select(IDEA_SELECT).eq("id", idea_id).single().execute()
+    return jsonify(full.data), 200
+
+
+@app.route("/api/ideas/<idea_id>/for-another-day", methods=["PATCH"])
+def set_idea_for_another_day(idea_id):
+    """Toggle whether an idea is parked on the 'For another day' list.
+
+    Body: { "forAnotherDay": true | false }
+    """
+    body = request.get_json() or {}
+    if "forAnotherDay" not in body:
+        return jsonify({"error": "forAnotherDay is required"}), 400
+    supabase.table("ideas").update({
+        "for_another_day": bool(body.get("forAnotherDay")),
+        "updated_at":      now(),
+    }).eq("id", idea_id).execute()
     full = supabase.table("ideas").select(IDEA_SELECT).eq("id", idea_id).single().execute()
     return jsonify(full.data), 200
 
@@ -705,6 +724,7 @@ def accept_suggestion(suggestion_id):
     description    = (body.get("description") or sug.data.get("suggested_description") or "").strip()
     existing_ids   = body.get("existingTagIds") or sug.data.get("existing_tag_ids") or []
     new_tag_names  = body.get("newTagNames")   or sug.data.get("new_tag_names")     or []
+    for_another    = bool(body.get("forAnotherDay", False))
     if not title:
         return jsonify({"error": "Title is required"}), 400
 
@@ -729,10 +749,11 @@ def accept_suggestion(suggestion_id):
     # 2. Create the idea row
     idea_id = str(uuid.uuid4())
     supabase.table("ideas").upsert({
-        "id":          idea_id,
-        "title":       title,
-        "description": description,
-        "updated_at":  now(),
+        "id":              idea_id,
+        "title":           title,
+        "description":     description,
+        "for_another_day": for_another,
+        "updated_at":      now(),
     }, on_conflict="id").execute()
 
     # 3. Attach tags via junction table

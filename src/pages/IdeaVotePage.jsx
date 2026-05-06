@@ -261,7 +261,8 @@ export default function IdeaVotePage() {
       api.ideas.list(),
     ]).then(([{ session: s }, ideaList]) => {
       setSession(s)
-      setIdeas(ideaList || [])
+      // Parked "For another day" ideas are excluded from voting on purpose.
+      setIdeas((ideaList || []).filter(i => !i.for_another_day))
       if (s?.status !== 'open') {
         setError('This voting session has been closed.')
       }
