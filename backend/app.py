@@ -780,6 +780,244 @@ def accept_suggestion(suggestion_id):
     return jsonify({"ok": True, "idea": full.data}), 201
 
 
+
+
+# ── Jira integration ───────────────────────────────────────────────────
+#
+# Lets a user push an idea — or a pending Granola-suggested idea —
+# directly into the VX Jira project as a Story. Pushed items get a
+# jira_issue_key + processed_at stamp on the ideas table, which surfaces
+# them in the "Processed" tab on the Ideas board.
+#
+# Required env vars (set in Railway):
+#   JIRA_BASE_URL     (default: https://viax.atlassian.net)
+#   JIRA_EMAIL        — Atlassian account email (basic-auth username)
+#   JIRA_API_TOKEN    — generate at id.atlassian.com → Security → API tokens
+#   JIRA_PROJECT_KEY  (default: VX)
+# ─────────────────────────────────────────────────────────────────────
+
+JIRA_BASE_URL    = os.getenv("JIRA_BASE_URL", "https://viax.atlassian.net").rstrip("/")
+JIRA_EMAIL       = os.getenv("JIRA_EMAIL", "")
+JIRA_API_TOKEN   = os.getenv("JIRA_API_TOKEN", "")
+JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY", "VX")
+
+
+def _jira_configured():
+    return bool(JIRA_EMAIL and JIRA_API_TOKEN)
+
+
+def _jira_request(method, path, json_body=None):
+    """Authenticated call to Jira Cloud REST v3. Returns (status, parsed_json_or_text)."""
+    import base64, httpx
+    if not _jira_configured():
+        raise RuntimeError("Jira credentials are not configured (set JIRA_EMAIL and JIRA_API_TOKEN)")
+    auth = base64.b64encode(f"{JIRA_EMAIL}:{JIRA_API_TOKEN}".encode()).decode()
+    url = f"{JIRA_BASE_URL}{path}"
+    headers = {
+        "Authorization": f"Basic {auth}",
+        "Accept":        "application/json",
+        "Content-Type":  "application/json",
+    }
+    with httpx.Client(timeout=20.0) as client:
+        resp = client.request(method, url, headers=headers, json=json_body)
+    try:
+        data = resp.json() if resp.content else None
+    except Exception:
+        data = resp.text
+    return resp.status_code, data
+
+
+def _description_to_adf(text):
+    """Wrap plain-text description as Atlassian Document Format (required by REST v3)."""
+    if not text:
+        return {"type": "doc", "version": 1, "content": []}
+    paragraphs = []
+    for chunk in text.split("\n"):
+        if not chunk.strip():
+            paragraphs.append({"type": "paragraph", "content": []})
+        else:
+            paragraphs.append({
+                "type":    "paragraph",
+                "content": [{"type": "text", "text": chunk}],
+            })
+    return {"type": "doc", "version": 1, "content": paragraphs}
+
+
+@app.route("/api/jira/components", methods=["GET"])
+def list_jira_components():
+    """Return the cached VX component list (refilled by /api/jira/components/refresh)."""
+    res = (
+        supabase.table("jira_components")
+        .select("*")
+        .eq("project_key", JIRA_PROJECT_KEY)
+        .eq("archived",    False)
+        .order("name")
+        .execute()
+    )
+    return jsonify({
+        "project_key": JIRA_PROJECT_KEY,
+        "components":  res.data or [],
+        "configured":  _jira_configured(),
+    })
+
+
+@app.route("/api/jira/components/refresh", methods=["POST"])
+def refresh_jira_components():
+    """Pull the latest VX components from Jira and replace the cache."""
+    if not _jira_configured():
+        return jsonify({"error": "Jira credentials are not configured on the server"}), 503
+
+    status, data = _jira_request("GET", f"/rest/api/3/project/{JIRA_PROJECT_KEY}/components")
+    if status >= 400 or not isinstance(data, list):
+        return jsonify({
+            "error":         "Failed to fetch components from Jira",
+            "jira_status":   status,
+            "jira_response": data,
+        }), 502
+
+    rows = [{
+        "jira_id":     str(c.get("id")),
+        "project_key": JIRA_PROJECT_KEY,
+        "name":        c.get("name") or "",
+        "description": c.get("description"),
+        "archived":    False,
+        "updated_at":  now(),
+    } for c in data if c.get("id")]
+
+    supabase.table("jira_components").delete().eq("project_key", JIRA_PROJECT_KEY).execute()
+    if rows:
+        supabase.table("jira_components").insert(rows).execute()
+
+    return jsonify({
+        "project_key": JIRA_PROJECT_KEY,
+        "components":  rows,
+        "count":       len(rows),
+    })
+
+
+@app.route("/api/jira/issue", methods=["POST"])
+def create_jira_issue():
+    """Create a Story in the VX project from an idea or a pending suggestion.
+
+    Body (one of idea_id or suggestion_id required):
+      {
+        "idea_id":       "<uuid>" | null,
+        "suggestion_id": "<uuid>" | null,
+        "title":         "...",
+        "description":   "...",
+        "component_ids": ["10001", "10002"]
+      }
+    """
+    if not _jira_configured():
+        return jsonify({"error": "Jira credentials are not configured on the server"}), 503
+
+    body          = request.get_json() or {}
+    idea_id       = body.get("idea_id")
+    suggestion_id = body.get("suggestion_id")
+    title         = (body.get("title") or "").strip()
+    description   = (body.get("description") or "").strip()
+    component_ids = body.get("component_ids") or []
+
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+    if not idea_id and not suggestion_id:
+        return jsonify({"error": "idea_id or suggestion_id is required"}), 400
+
+    # If pushing from a pending suggestion, materialise it as an idea first
+    # (mirrors POST /api/suggestions/<id>/accept) so the Jira link lives on
+    # the idea row.
+    if not idea_id and suggestion_id:
+        sug = (
+            supabase.table("idea_suggestions")
+            .select("*")
+            .eq("id", suggestion_id)
+            .single()
+            .execute()
+        )
+        if not sug.data:
+            return jsonify({"error": "Suggestion not found"}), 404
+
+        if sug.data["status"] == "accepted" and sug.data.get("resulting_idea_id"):
+            idea_id = sug.data["resulting_idea_id"]
+        else:
+            existing_ids  = sug.data.get("existing_tag_ids") or []
+            new_tag_names = sug.data.get("new_tag_names")    or []
+            final_tag_ids = list(existing_ids)
+            for raw in new_tag_names:
+                name = (raw or "").strip()
+                if not name:
+                    continue
+                existing = supabase.table("idea_tags").select("id").eq("name", name).execute()
+                if existing.data:
+                    tid = existing.data[0]["id"]
+                else:
+                    ins = supabase.table("idea_tags").insert({
+                        "id":   str(uuid.uuid4()),
+                        "name": name,
+                    }).execute()
+                    tid = ins.data[0]["id"]
+                if tid not in final_tag_ids:
+                    final_tag_ids.append(tid)
+
+            idea_id = str(uuid.uuid4())
+            supabase.table("ideas").upsert({
+                "id":          idea_id,
+                "title":       title,
+                "description": description,
+                "updated_at":  now(),
+            }, on_conflict="id").execute()
+            if final_tag_ids:
+                supabase.table("idea_tag_assignments").insert([
+                    {"idea_id": idea_id, "tag_id": tid} for tid in final_tag_ids
+                ]).execute()
+            supabase.table("idea_suggestions").update({
+                "status":            "accepted",
+                "reviewed_at":       now(),
+                "resulting_idea_id": idea_id,
+            }).eq("id", suggestion_id).execute()
+
+    # Build the Jira create payload — Story, default workflow status (To Do)
+    fields = {
+        "project":     {"key": JIRA_PROJECT_KEY},
+        "summary":     title,
+        "description": _description_to_adf(description),
+        "issuetype":   {"name": "Story"},
+    }
+    if component_ids:
+        fields["components"] = [{"id": str(cid)} for cid in component_ids]
+
+    status, data = _jira_request("POST", "/rest/api/3/issue", json_body={"fields": fields})
+    if status >= 400 or not isinstance(data, dict) or not data.get("key"):
+        return jsonify({
+            "error":         "Failed to create Jira issue",
+            "jira_status":   status,
+            "jira_response": data,
+        }), 502
+
+    issue_key = data["key"]
+    issue_url = f"{JIRA_BASE_URL}/browse/{issue_key}"
+
+    supabase.table("ideas").update({
+        "jira_issue_key": issue_key,
+        "processed_at":   now(),
+        "updated_at":     now(),
+    }).eq("id", idea_id).execute()
+
+    full = (
+        supabase.table("ideas")
+        .select(IDEA_SELECT)
+        .eq("id", idea_id)
+        .single()
+        .execute()
+    )
+    return jsonify({
+        "ok":             True,
+        "idea":           full.data,
+        "jira_issue_key": issue_key,
+        "jira_url":       issue_url,
+    }), 201
+
+
 # ── Health ─────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])

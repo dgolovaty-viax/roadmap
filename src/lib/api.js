@@ -76,6 +76,14 @@ export const api = {
     suggestWsjf:   (epic)           => request('POST', '/api/ai/suggest-wsjf',   { epic }),
   },
 
+  // ── Jira integration ────────────────────────────────────────────────
+
+  jira: {
+    components:        ()                            => request('GET',  '/api/jira/components'),
+    refreshComponents: ()                            => request('POST', '/api/jira/components/refresh'),
+    createIssue:       (payload)                     => request('POST', '/api/jira/issue', payload),
+  },
+
   // ── Suggested Ideas (from Granola meeting scans) ─────────────────────
 
   suggestions: {

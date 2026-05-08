@@ -623,7 +623,7 @@ function ResultsView({ votes, ideas, onPromote, onDismiss }) {
 
 // ── IdeaCard ───────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd, onToggleParked, parked }) {
+function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart, onDragOver, onDrop, onDragEnd, onToggleParked, parked, onSendToJira }) {
   const [hovered, setHovered] = useState(false)
   const [busyToggle, setBusyToggle] = useState(false)
   const tags = idea.tags || []
@@ -666,7 +666,7 @@ function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart,
       }}
     >
       {/* Quick park / unpark action — appears on hover */}
-      {onToggleParked && (hovered || busyToggle) && (
+      {onToggleParked && !idea.jira_issue_key && (hovered || busyToggle) && (
         <button
           onClick={handleTogglePark}
           disabled={busyToggle}
@@ -682,6 +682,44 @@ function IdeaCard({ idea, onClick, dragging, dragOver, isDuplicate, onDragStart,
         >
           {parked ? '↩ Activate' : '💤 Park'}
         </button>
+      )}
+
+      {/* Send-to-Jira hover action (only for ideas not already pushed) */}
+      {onSendToJira && !idea.jira_issue_key && (hovered || busyToggle) && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSendToJira(idea) }}
+          title="Create a Jira Story in VX from this idea"
+          style={{
+            position: 'absolute', top: 8, right: onToggleParked ? 88 : 8,
+            background: '#FFFFFF', border: '1px solid #0052CC',
+            borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600,
+            color: '#0052CC', cursor: 'pointer',
+            fontFamily: FONT, opacity: 0.95,
+            display: 'inline-flex', alignItems: 'center', gap: 4, lineHeight: 1.2,
+          }}
+        >
+          → Jira
+        </button>
+      )}
+
+      {/* Permanent Jira badge for already-pushed ideas */}
+      {idea.jira_issue_key && (
+        <a
+          href={`${JIRA_BROWSE_BASE}/${idea.jira_issue_key}`}
+          target="_blank" rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open ${idea.jira_issue_key} in Jira`}
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            background: '#E8F0FE', border: '1px solid #0052CC',
+            borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 700,
+            color: '#0052CC', textDecoration: 'none',
+            fontFamily: FONT, letterSpacing: '0.02em',
+            display: 'inline-flex', alignItems: 'center', gap: 4, lineHeight: 1.2,
+          }}
+        >
+          {idea.jira_issue_key} ↗
+        </a>
       )}
 
       {/* Upper content — grows to fill cell, pushes tags to bottom */}
@@ -1187,6 +1225,154 @@ function VoteHistoryDetail({ session, onBack, onBackLabel }) {
 
 // ── Ideas Page ─────────────────────────────────────────────────────────
 
+// ── SendToJiraModal ────────────────────────────────────────────────────
+//
+// Shared modal used to push either a Granola suggestion (suggestionId) or an
+// existing idea (ideaId) into the VX Jira project as a Story. Multi-select
+// component picker is backed by a server-side cache that can be refreshed.
+
+const JIRA_BROWSE_BASE = 'https://viax.atlassian.net/browse'
+
+function SendToJiraModal({ source, onClose, onCreated }) {
+  // source: { kind: 'suggestion' | 'idea', id, title, description }
+  const [title,         setTitle]         = useState(source.title || '')
+  const [desc,          setDesc]          = useState(source.description || '')
+  const [components,    setComponents]    = useState([])
+  const [selected,      setSelected]      = useState(new Set())
+  const [loadingComps,  setLoadingComps]  = useState(true)
+  const [refreshing,    setRefreshing]    = useState(false)
+  const [submitting,    setSubmitting]    = useState(false)
+  const [error,         setError]         = useState(null)
+  const [filter,        setFilter]        = useState('')
+
+  useEffect(() => {
+    let alive = true
+    api.jira.components()
+      .then(r => { if (alive) setComponents(r?.components || []) })
+      .catch(e => { if (alive) setError(e.message || String(e)) })
+      .finally(() => { if (alive) setLoadingComps(false) })
+    return () => { alive = false }
+  }, [])
+
+  async function handleRefresh() {
+    setRefreshing(true); setError(null)
+    try {
+      const r = await api.jira.refreshComponents()
+      setComponents(r?.components || [])
+    } catch (e) {
+      setError(e.message || String(e))
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  function toggle(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  async function handleSubmit() {
+    setSubmitting(true); setError(null)
+    try {
+      const payload = {
+        title:         title.trim(),
+        description:   desc,
+        component_ids: [...selected],
+      }
+      if (source.kind === 'suggestion') payload.suggestion_id = source.id
+      else                              payload.idea_id       = source.id
+
+      const res = await api.jira.createIssue(payload)
+      onCreated?.(res)
+      onClose?.()
+    } catch (e) {
+      setError(e.message || String(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const visible = filter.trim()
+    ? components.filter(c => c.name.toLowerCase().includes(filter.trim().toLowerCase()))
+    : components
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: '#FFFFFF', borderRadius: 12, padding: 24, width: 560, maxWidth: '92vw',
+        maxHeight: '88vh', overflow: 'auto', fontFamily: FONT, boxShadow: '0 12px 48px rgba(0,0,0,0.18)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#1E1E1E' }}>
+            Send to Jira <span style={{ fontWeight: 500, color: '#999', fontSize: 13 }}>· VX · Story · To Do</span>
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#888' }}>×</button>
+        </div>
+
+        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888' }}>Summary</label>
+        <input value={title} onChange={e => setTitle(e.target.value)}
+          style={{ ...lightField, fontSize: 15, fontWeight: 600, marginTop: 4, marginBottom: 12 }} />
+
+        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888' }}>Description</label>
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={5}
+          style={{ ...lightField, resize: 'vertical', fontFamily: FONT, marginTop: 4, marginBottom: 12 }} />
+
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888' }}>
+            Components {selected.size > 0 && <span style={{ color: '#4FD0A5' }}>· {selected.size} selected</span>}
+          </label>
+          <button onClick={handleRefresh} disabled={refreshing}
+            style={{ background: 'none', border: 'none', color: '#4FD0A5', cursor: refreshing ? 'wait' : 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>
+            {refreshing ? 'Refreshing…' : '↻ Refresh from Jira'}
+          </button>
+        </div>
+
+        <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter components…"
+          style={{ ...lightField, fontSize: 13, marginTop: 6, marginBottom: 8 }} />
+
+        <div style={{ border: '1px solid #E2E0DC', borderRadius: 8, padding: 6, maxHeight: 200, overflow: 'auto', background: '#FAFAF8' }}>
+          {loadingComps ? (
+            <div style={{ padding: 12, color: '#888', fontSize: 13 }}>Loading components…</div>
+          ) : visible.length === 0 ? (
+            <div style={{ padding: 12, color: '#888', fontSize: 13 }}>
+              No components cached. Click <strong>Refresh from Jira</strong> to pull the list.
+            </div>
+          ) : (
+            visible.map(c => (
+              <label key={c.jira_id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                cursor: 'pointer', borderRadius: 4,
+                background: selected.has(c.jira_id) ? '#E8F8F1' : 'transparent',
+              }}>
+                <input type="checkbox" checked={selected.has(c.jira_id)} onChange={() => toggle(c.jira_id)} />
+                <span style={{ fontSize: 13, color: '#1E1E1E' }}>{c.name}</span>
+                {c.description && <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{c.description}</span>}
+              </label>
+            ))
+          )}
+        </div>
+
+        {error && <div style={{ marginTop: 12, fontSize: 12, color: '#C92A2A' }}>⚠ {error}</div>}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+          <button onClick={onClose} style={btn('#FFFFFF', '#555', '#E2E0DC')} disabled={submitting}>Cancel</button>
+          <button onClick={handleSubmit} disabled={submitting || !title.trim()}
+            style={btn('#0052CC', '#FFFFFF')}>
+            {submitting ? 'Creating…' : 'Create Jira Story'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Suggestions inbox (from nightly Granola scan) ──────────────────────
 
 function formatMeetingDate(iso) {
@@ -1197,7 +1383,7 @@ function formatMeetingDate(iso) {
   } catch { return '' }
 }
 
-function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, onReloadTags }) {
+function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, onReloadTags, onSendToJira }) {
   const existingTags  = suggestion.existing_tags || []
   const [busy,           setBusy]          = useState(false)
   const [editing,        setEditing]       = useState(false)
@@ -1358,6 +1544,14 @@ function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, on
           </div>
           {error && <div style={{ fontSize: 12, color: '#C92A2A' }}>⚠ {error}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onSendToJira?.(suggestion)}
+              style={btn('#FFFFFF', '#0052CC', '#0052CC')}
+              disabled={busy}
+              title="Create a Jira Story in VX from this suggestion"
+            >
+              → Jira
+            </button>
             <button onClick={runDismiss} style={btn('#FFFFFF', '#888', '#E2E0DC')} disabled={busy}>Dismiss</button>
             <button onClick={() => setEditing(true)} style={btn('#FFFFFF', '#555', '#E2E0DC')} disabled={busy}>Edit</button>
             <button
@@ -1378,7 +1572,7 @@ function SuggestionCard({ suggestion, tags, onAccept, onDismiss, onCreateTag, on
   )
 }
 
-function SuggestionsInbox({ tags, onCreateTag, onAccepted, onReloadTags }) {
+function SuggestionsInbox({ tags, onCreateTag, onAccepted, onReloadTags, onSendToJira }) {
   const [suggestions, setSuggestions] = useState([])
   const [loading,     setLoading]     = useState(true)
   const [expanded,    setExpanded]    = useState(true)
@@ -1475,6 +1669,7 @@ function SuggestionsInbox({ tags, onCreateTag, onAccepted, onReloadTags }) {
                   <SuggestionCard
                     key={s.id}
                     suggestion={s}
+                    onSendToJira={onSendToJira}
                     tags={tags}
                     onCreateTag={onCreateTag}
                     onReloadTags={onReloadTags}
@@ -1501,6 +1696,8 @@ export default function IdeasPage() {
 
   // 'active' = regular ideas, 'parked' = "For another day"
   const [view, setView]                     = useState('active')
+  // Send-to-Jira modal target — { kind: 'suggestion'|'idea', id, title, description } | null
+  const [jiraTarget, setJiraTarget] = useState(null)
   const [activeTags, setActiveTags]         = useState(new Set())
   const [searchQuery, setSearchQuery]       = useState('')
   const [selectedId, setSelectedId]         = useState(null)
@@ -1546,10 +1743,15 @@ export default function IdeasPage() {
 
   const selected = ideas.find(i => i.id === selectedId) || null
 
-  // Split into active vs "For another day" up front
-  const activeIdeas = useMemo(() => ideas.filter(i => !i.for_another_day), [ideas])
-  const parkedIdeas = useMemo(() => ideas.filter(i =>  i.for_another_day), [ideas])
-  const viewIdeas   = view === 'parked' ? parkedIdeas : activeIdeas
+  // Split into active vs "For another day" vs "Processed" up front.
+  // Processed ideas (pushed to Jira) live in their own tab so they don't
+  // clutter the active board or the parked list.
+  const activeIdeas    = useMemo(() => ideas.filter(i => !i.for_another_day && !i.processed_at), [ideas])
+  const parkedIdeas    = useMemo(() => ideas.filter(i =>  i.for_another_day && !i.processed_at), [ideas])
+  const processedIdeas = useMemo(() => ideas.filter(i =>  i.processed_at), [ideas])
+  const viewIdeas      = view === 'parked'    ? parkedIdeas
+                       : view === 'processed' ? processedIdeas
+                       : activeIdeas
 
   const usedTagIds = [...new Set(viewIdeas.flatMap(i => (i.tags || []).map(t => t.id)))]
   const usedTags   = tags.filter(t => usedTagIds.includes(t.id))
@@ -1754,13 +1956,20 @@ export default function IdeasPage() {
               onCreateTag={createTag}
               onReloadTags={reloadTags}
               onAccepted={reloadIdeas}
+              onSendToJira={(suggestion) => setJiraTarget({
+                kind:        'suggestion',
+                id:          suggestion.id,
+                title:       suggestion.suggested_title || '',
+                description: suggestion.suggested_description || '',
+              })}
             />
 
             {/* Active vs "For another day" tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #E2E0DC' }}>
               {[
-                { key: 'active', label: 'Active',          count: activeIdeas.length },
-                { key: 'parked', label: 'For another day', count: parkedIdeas.length },
+                { key: 'active',    label: 'Active',          count: activeIdeas.length },
+                { key: 'parked',    label: 'For another day', count: parkedIdeas.length },
+                { key: 'processed', label: 'Processed',       count: processedIdeas.length },
               ].map(tab => {
                 const isActive = view === tab.key
                 return (
@@ -1779,6 +1988,7 @@ export default function IdeasPage() {
                     }}
                   >
                     {tab.key === 'parked' && <span aria-hidden>💤</span>}
+                    {tab.key === 'processed' && <span aria-hidden>✓</span>}
                     {tab.label}
                     <span style={{
                       background: isActive ? '#1E1E1E' : '#F0F0EE',
@@ -1886,9 +2096,11 @@ export default function IdeasPage() {
                     {startingVote ? 'Starting…' : '🗳 Start voting'}
                   </button>
                 )}
-                <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>
-                  {view === 'parked' ? '+ New (For Another Day)' : '+ New Idea'}
-                </button>
+                {view !== 'processed' && (
+                  <button onClick={() => setShowCreate(true)} style={btn('#4FD0A5', '#1E1E1E')}>
+                    {view === 'parked' ? '+ New (For Another Day)' : '+ New Idea'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1897,7 +2109,9 @@ export default function IdeasPage() {
               {loading ? 'Loading…' : filtered.length === 0
                 ? (searchQuery.trim() || activeTags.size > 0
                     ? 'No ideas match your search'
-                    : view === 'parked' ? 'Nothing parked yet' : 'No ideas yet')
+                    : view === 'parked' ? 'Nothing parked yet'
+                    : view === 'processed' ? 'Nothing processed yet'
+                    : 'No ideas yet')
                 : `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`
               }
             </p>
@@ -1906,13 +2120,15 @@ export default function IdeasPage() {
             {!loading && (
               filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                  <div style={{ fontSize: 36, marginBottom: 14 }}>{view === 'parked' ? '💤' : '💡'}</div>
+                  <div style={{ fontSize: 36, marginBottom: 14 }}>{view === 'parked' ? '💤' : view === 'processed' ? '✓' : '💡'}</div>
                   <p style={{ fontSize: 15, color: '#AAAAAA', margin: '0 0 24px 0' }}>
                     {searchQuery.trim() || activeTags.size > 0
                       ? 'No ideas match your search.'
                       : view === 'parked'
                         ? 'Nothing here yet. Park an active idea — or accept a meeting suggestion as "For another day" — to keep it for later.'
-                        : 'No ideas yet. Add the first one.'}
+                        : view === 'processed'
+                          ? 'Nothing here yet. Push a suggestion or idea into Jira and it\'ll land here with a clickable VX-NNNN badge.'
+                          : 'No ideas yet. Add the first one.'}
                   </p>
                   {!searchQuery.trim() && activeTags.size === 0 && view === 'active' && (
                     <button
@@ -1930,6 +2146,12 @@ export default function IdeasPage() {
                       key={idea.id}
                       idea={idea}
                       onClick={() => !draggedId && setSelectedId(idea.id)}
+                      onSendToJira={(i) => setJiraTarget({
+                        kind:        'idea',
+                        id:          i.id,
+                        title:       i.title || '',
+                        description: i.description || '',
+                      })}
                       dragging={draggedId === idea.id}
                       dragOver={dragOverId === idea.id && draggedId !== idea.id}
                       isDuplicate={duplicateIds.has(idea.id)}
@@ -1948,6 +2170,14 @@ export default function IdeasPage() {
           </>
         )}
       </div>
+
+      {jiraTarget && (
+        <SendToJiraModal
+          source={jiraTarget}
+          onClose={() => setJiraTarget(null)}
+          onCreated={() => { setJiraTarget(null); reloadIdeas() }}
+        />
+      )}
 
       {showCreate && (
         <CreateModal
