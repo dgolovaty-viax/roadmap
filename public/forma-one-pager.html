@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax &mdash; Forma: Guardrails and governance for viax surfaces</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:        #F8F7F6;
+    --cream-dark:   #F2F1F0;
+    --white:        #FEFEFE;
+    --dark:         #1E1E1E;
+    --dark-alt:     #2A2A2A;
+    --gray-light:   #8A8A8A;
+    --gray-mid:     #525252;
+    --border:       #E2E0DC;
+
+    --mint:         #90E9B8;
+    --mint-dark:    #5ED49A;
+    --mint-text:    #177558;
+    --mint-soft:    #E8F8EE;
+
+    --lavender:     #C3BEF7;
+    --lavender-text:#4A3D9E;
+    --peach:        #FCD0A1;
+    --peach-text:   #9B5B12;
+
+    --red:          #D9534F;
+    --red-soft:     #FCE8E6;
+
+    --font-display: "Funnel Sans", Inter, system-ui, sans-serif;
+    --font-mono:    "DM Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-display);
+    color: var(--dark);
+    background: var(--cream);
+    line-height: 1.55;
+    padding: 36px;
+    max-width: 1200px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { max-width: 880px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 500;
+    letter-spacing: -0.5px; line-height: 1.2;
+    color: var(--dark);
+  }
+  h1 span { color: var(--mint-dark); }
+  .header-sub {
+    font-size: 13.5px;
+    color: var(--gray-mid);
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  .header-sub code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--mint-text);
+    background: var(--mint-soft);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .header-sub em { font-style: italic; color: var(--dark); }
+  .header-sub strong { color: var(--dark); font-weight: 600; }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-right svg { display: block; margin-left: auto; }
+  .header-right .tag {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin-top: 6px;
+  }
+
+  /* SECTION HEADERS */
+  h2 {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin: 32px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--mint-dark);
+    display: inline-block;
+  }
+  p { font-size: 13.5px; color: var(--gray-mid); line-height: 1.6; }
+  p code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--mint-text);
+    background: var(--mint-soft);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* PROBLEM / TARGET ROW */
+  .pt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .pt-box {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .pt-current { border-left: 3px solid var(--red); }
+  .pt-target  { border-left: 3px solid var(--mint-dark); }
+
+  .pt-box .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pt-current .lbl { color: var(--red); }
+  .pt-target  .lbl { color: var(--mint-text); }
+  .pt-box p { font-size: 13px; line-height: 1.55; color: var(--gray-mid); }
+  .pt-box p strong { color: var(--dark); font-weight: 600; }
+  .pt-box p em { font-style: italic; color: var(--dark); }
+  .pt-box p code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mint-text);
+    background: var(--mint-soft);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* STACK LAYERS (top-down) */
+  .stack-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 6px 0 0 0;
+  }
+  .layer-row {
+    display: grid;
+    gap: 8px;
+  }
+  .layer-row.dual { grid-template-columns: 1fr 1fr; }
+  .layer-row.solo { grid-template-columns: 1fr; }
+
+  .layer-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .layer-card.split {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 22px;
+    align-items: stretch;
+  }
+  .layer-card.split .head {
+    border-right: 1px solid var(--border);
+    padding-right: 22px;
+  }
+
+  .layer-card .role {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .layer-card .name {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 500;
+    color: var(--dark);
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+  .layer-card .lede {
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.55;
+  }
+  .layer-card .lede em { font-style: italic; color: var(--dark); }
+  .layer-card .lede strong { color: var(--dark); font-weight: 600; }
+  .layer-card .lede code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mint-text);
+    background: var(--mint-soft);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .layer-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .layer-card ul li {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--dark);
+    padding: 3px 0 3px 12px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .layer-card ul li::before {
+    content: '·';
+    position: absolute;
+    left: 2px; top: -2px;
+    color: var(--mint-dark);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .layer-card ul li .meta {
+    color: var(--gray-light);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .layer-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-light);
+    gap: 8px;
+  }
+  .layer-divider::before {
+    content: '\25BC';
+    color: var(--mint-dark);
+    font-size: 11px;
+  }
+
+  /* DESIGN.MD CALLOUT */
+  .designmd-note {
+    background: var(--cream-dark);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 10px 0 0 0;
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.55;
+    text-align: center;
+  }
+  .designmd-note code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mint-text);
+    background: var(--mint-soft);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+  .designmd-note strong { color: var(--dark); font-weight: 600; }
+
+  /* WHY-IT-MATTERS */
+  .why-band {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--mint-dark);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-top: 4px;
+  }
+  .why-band p {
+    font-size: 13px;
+    color: var(--gray-mid);
+    line-height: 1.6;
+  }
+  .why-band p strong { color: var(--dark); font-weight: 600; }
+  .why-band p em { font-style: italic; color: var(--dark); }
+
+  /* PRINCIPLES BAND */
+  .principles {
+    background: var(--dark);
+    color: var(--cream);
+    border-radius: 6px;
+    padding: 18px 24px;
+    margin-top: 8px;
+  }
+  .principles .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 10px;
+  }
+  .principles ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 22px;
+  }
+  .principles ul li {
+    font-size: 13px;
+    color: var(--cream);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .principles ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0; top: -2px;
+    color: var(--mint);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .principles ul li strong { color: var(--mint); font-weight: 500; }
+  .principles ul li code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--mint);
+    background: rgba(144, 233, 184, 0.10);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--gray-light);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Delivery POV &middot; Target State &middot; Internal Draft</div>
+    <h1>Guardrails and <span>governance</span> for viax surfaces.</h1>
+    <div class="header-sub"><strong>Forma</strong> is the umbrella name for the way AI composes viax applications: a coordinating skill maps schema to UXM components, a fixed set of skills carry the cross-cutting concerns no portal should reinvent, and every build emits a <code>design.md</code> so humans review the spec before code lands. The first proof is Modo. The second is the generic Revenue Motion portal.</div>
+  </div>
+  <div class="header-right">
+    <svg width="100" height="26" viewBox="0 0 285 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="viax">
+      <path d="M258.095 74C242.927 74 232.079 64.6667 232.079 47.7143C232.079 30.0953 242.927 21.5238 258.095 21.5238C273.359 21.5238 284.207 30.0953 284.207 47.7143C284.207 64.6667 273.359 74 258.095 74ZM258.095 63.0476C266.351 63.0476 272.207 57.5238 272.207 47.8095C272.207 37.7143 266.351 32.5715 258.095 32.5715C249.935 32.5715 244.079 37.7143 244.079 47.8095C244.079 57.5238 249.935 63.0476 258.095 63.0476Z" fill="#1E1E1E"/>
+      <path d="M212.084 72.8571V22.6667H224.948V72.8571H212.084ZM211.028 0H226.004V13.2381H211.028V0Z" fill="#1E1E1E"/>
+      <path d="M189.174 59.5237H203.19V72.857H189.174V59.5237Z" fill="#1E1E1E"/>
+      <path d="M100.267 74C85.9627 74 75.5947 64.7619 75.5947 47.8095C75.5947 30.1905 85.9627 21.5238 100.267 21.5238C108.331 21.5238 114.667 24.5715 118.507 30.4762L119.659 22.6667H128.683V72.8572H119.467L118.411 65.0476C114.571 70.8572 108.331 74 100.267 74ZM101.611 63.0476C109.867 63.0476 115.723 57.5238 115.723 47.8095C115.723 37.7143 109.867 32.5715 101.611 32.5715C93.4507 32.5715 87.5947 37.7143 87.5947 47.8095C87.5947 57.5238 93.4507 63.0476 101.611 63.0476Z" fill="#1E1E1E"/>
+      <path d="M55.6004 72.8571V22.6667H68.4644V72.8571H55.6004ZM54.5444 0H69.5204V13.2381H54.5444V0Z" fill="#1E1E1E"/>
+      <path d="M18.336 72.8571L0 30.9523V22.6666H9.984L24.96 61.0475L39.648 22.6666H49.536V30.9523L31.296 72.8571H18.336Z" fill="#1E1E1E"/>
+      <path d="M158.755 57.8916L147.656 72.9756H137V63.0879L149.21 48.3457L158.755 57.8916ZM181.064 63.0879V72.9756H170.12L159.23 58.1768L168.898 48.5088L181.064 63.0879ZM158.622 36.5127L148.93 46.2051L137 31.8877V22H148.136L158.622 36.5127ZM181.064 31.8877L169.18 46.043L159.367 36.2314L169.928 22H181.064V31.8877Z" fill="#5ED49A"/>
+    </svg>
+    <div class="tag">v2 &middot; May 2026</div>
+  </div>
+</div>
+
+<!-- PROBLEM / TARGET -->
+<h2>Problem &amp; Target</h2>
+<div class="pt-row">
+  <div class="pt-box pt-current">
+    <div class="lbl">Today</div>
+    <p>AI can produce any UI you ask for. <strong>That is the problem.</strong> Without a frame, every portal is a one-off &mdash; bespoke forms, inconsistent components, role visibility bolted on, localization deferred, security reasoned about per screen. Reuse is theatre. Each engagement starts the work over.</p>
+  </div>
+  <div class="pt-box pt-target">
+    <div class="lbl">Target</div>
+    <p>AI builds <strong>with</strong> Forma &mdash; composing UXM components against schema, behind a fixed set of skills that handle the things no portal should reinvent. Every build emits a <code>design.md</code> &mdash; the human-reviewable contract for what got composed. <strong>Engagements compound.</strong> Customers extend on the same surfaces viax delivers on, <em>in the JS framework of their choice</em>.</p>
+  </div>
+</div>
+
+<!-- LAYERED STACK -->
+<h2>The Stack</h2>
+<div class="stack-layers">
+
+  <!-- TOP LAYER: SURFACES (Modo + Portals) -->
+  <div class="layer-row dual">
+    <div class="layer-card">
+      <div class="role">Surface</div>
+      <div class="name">Modo</div>
+      <div class="lede">Home for viax modeling functionality. Shipped by viax, built with UXM components.</div>
+    </div>
+    <div class="layer-card">
+      <div class="role">Surface</div>
+      <div class="name">Portals</div>
+      <div class="lede">The generic Revenue Motion portal and custom customer surfaces. Composed by Forma (post-config); client picks the JS framework.</div>
+    </div>
+  </div>
+
+  <div class="layer-divider">rests on</div>
+
+  <!-- MIDDLE LAYER: FORMA -->
+  <div class="layer-row solo">
+    <div class="layer-card split">
+      <div class="head">
+        <div class="role">Pattern</div>
+        <div class="name">Forma</div>
+        <div class="lede">The umbrella for how AI composes viax applications. A coordinating skill maps schema to UXM components; fixed skills carry the cross-cutting concerns AI <em>must never</em> write per screen.</div>
+      </div>
+      <ul>
+        <li>Schema &rarr; component mapping <span class="meta">(coordinating skill)</span></li>
+        <li>Dynamic forms</li>
+        <li>Role-based security &amp; visibility</li>
+        <li>Localization &amp; i18n</li>
+        <li>Multi-framework output <span class="meta">(Vue today; React and others ahead)</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="layer-divider">composes from</div>
+
+  <!-- BOTTOM LAYER: UXM -->
+  <div class="layer-row solo">
+    <div class="layer-card split">
+      <div class="head">
+        <div class="role">Experience</div>
+        <div class="name">UXM</div>
+        <div class="lede">The core viax component package. <strong>Schema-agnostic</strong> &mdash; components take props, emit events. Brand identity, accessibility, and variant consistency live <em>here</em> &mdash; not in code AI generates per portal.</div>
+      </div>
+      <ul>
+        <li>67 components <span class="meta">(App &middot; Buttons &middot; Inputs &middot; &hellip;)</span></li>
+        <li>Schema-agnostic <span class="meta">(props in, events out)</span></li>
+        <li>Brand Settings <span class="meta">(logo, type, light/dark)</span></li>
+        <li>WCAG AA enforced; variants stay consistent</li>
+        <li>Customers customize tokens &amp; add components; core stays viax-owned</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div class="designmd-note">
+  Every Forma build emits a <code>design.md</code> &mdash; the <strong>human-reviewable spec</strong> for what got composed. AI is judged on the spec before code lands.
+</div>
+
+<!-- WHY THIS MATTERS -->
+<h2>Why this matters for delivery</h2>
+<div class="why-band">
+  <p>Each engagement <strong>compounds</strong> instead of resetting. Customers extend on the same surfaces viax delivers on &mdash; there is no fork &mdash; and choose the JS framework that fits their stack. AI gets <em>faster and less risky</em> over time, because every new capability lands inside Forma&rsquo;s skills or UXM&rsquo;s library, not on a blank file. <strong>Modo is the proof:</strong> viax ships its own product on the same components we ask customers to compose theirs from.</p>
+</div>
+
+<!-- PRINCIPLES -->
+<h2>Principles</h2>
+<div class="principles">
+  <div class="lbl">Non-negotiables</div>
+  <ul>
+    <li>Things are built <strong>with</strong> Forma, never <strong>on</strong> it.</li>
+    <li>UXM is the only place components are defined; Forma <strong>composes from</strong> it, never around it.</li>
+    <li>Skills <strong>replace bespoke plumbing</strong> &mdash; forms, security, visibility, i18n.</li>
+    <li>Brand identity, accessibility, and variant consistency are <strong>UXM&rsquo;s job</strong> &mdash; never AI&rsquo;s per-screen decision.</li>
+    <li>Customers <strong>customize tokens and add components</strong>; core components stay viax-owned.</li>
+    <li>Customers <strong>pick the JS framework</strong> for their surfaces; the component contract and skills are not.</li>
+    <li>Every Forma build emits a <code>design.md</code> &mdash; the <strong>spec is the artifact</strong> AI is judged on, before code lands.</li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  <div>Forma &middot; Delivery POV &middot; Internal Draft v2 &middot; Working Name &middot; Target State</div>
+  <div>viax.io &middot; &copy; 2026</div>
+</div>
+
+</body>
+</html>

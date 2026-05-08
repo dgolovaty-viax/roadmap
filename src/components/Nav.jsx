@@ -43,6 +43,9 @@ export default function Nav() {
         <NavLink to="/north-star" className={navLinkClass}>
           North Star
         </NavLink>
+        <NavLink to="/forma-one-pager" className={navLinkClass}>
+          Forma One Pager
+        </NavLink>
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>

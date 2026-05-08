@@ -6,6 +6,7 @@ import PlanningPage from '@/pages/PlanningPage'
 import SessionPage from '@/pages/SessionPage'
 import IdeasPage from '@/pages/IdeasPage'
 import IdeaVotePage from '@/pages/IdeaVotePage'
+import FormaOnePagerPage from '@/pages/FormaOnePagerPage'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<RoadmapPage />} />
             <Route path="/north-star" element={<NorthStarPage />} />
+            <Route path="/forma-one-pager" element={<FormaOnePagerPage />} />
             <Route path="/planning" element={<PlanningPage />} />
             <Route path="/planning/epics/:epicId" element={<PlanningPage />} />
             <Route path="/planning/session/:sessionId" element={<SessionPage />} />
