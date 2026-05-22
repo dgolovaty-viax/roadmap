@@ -49,6 +49,9 @@ export default function Nav() {
         <NavLink to="/release-pipeline" className={navLinkClass}>
           AI-Augmented Releasing
         </NavLink>
+        <NavLink to="/support-pipeline" className={navLinkClass}>
+          AI-Augmented Support
+        </NavLink>
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>

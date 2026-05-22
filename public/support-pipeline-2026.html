@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax Support Process 2026 — v1 Action Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:        #F8F7F6;
+    --cream-dark:   #F2F1F0;
+    --white:        #FEFEFE;
+    --dark:         #1E1E1E;
+    --dark-alt:     #2A2A2A;
+    --gray-light:   #8A8A8A;
+    --gray-mid:     #525252;
+    --border:       #E2E0DC;
+
+    --mint:         #90E9B8;
+    --mint-dark:    #5ED49A;
+    --mint-text:    #177558;
+    --mint-soft:    #E8F8EE;
+
+    --lavender:     #C3BEF7;
+    --lavender-text:#4A3D9E;
+    --peach:        #FCD0A1;
+    --peach-text:   #9B5B12;
+
+    --red:          #D9534F;
+    --red-soft:     #FCE8E6;
+
+    --font-display: "Funnel Sans", Inter, system-ui, sans-serif;
+    --font-mono:    "DM Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-display);
+    color: var(--dark);
+    background: var(--cream);
+    line-height: 1.55;
+    padding: 36px;
+    max-width: 1200px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { max-width: 820px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 500;
+    letter-spacing: -0.5px; line-height: 1.2;
+    color: var(--dark);
+  }
+  h1 span { color: var(--mint-dark); }
+  .header-sub {
+    font-size: 13.5px;
+    color: var(--gray-mid);
+    margin-top: 6px;
+    line-height: 1.55;
+  }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-right svg { display: block; margin-left: auto; }
+  .header-right .tag {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin-top: 6px;
+  }
+
+  /* SECTION HEADERS */
+  h2 {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin: 32px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--mint-dark);
+    display: inline-block;
+  }
+  h3 {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin: 18px 0 8px 0;
+  }
+  p { font-size: 13.5px; color: var(--gray-mid); line-height: 1.6; }
+
+  /* PROBLEM / TARGET ROW */
+  .pt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .pt-box {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .pt-current { border-left: 3px solid var(--red); }
+  .pt-target  { border-left: 3px solid var(--mint-dark); }
+
+  .pt-box .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pt-current .lbl { color: var(--red); }
+  .pt-target  .lbl { color: var(--mint-text); }
+  .pt-box p { font-size: 13px; line-height: 1.55; color: var(--gray-mid); }
+  .pt-box p strong { color: var(--dark); font-weight: 600; }
+
+  /* PHASE FLOW STRIP */
+  .phase-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: 6px 0 4px 0;
+  }
+  .phase-tile {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 14px 16px 12px 16px;
+    position: relative;
+  }
+  .phase-tile:first-child { border-radius: 6px 0 0 6px; }
+  .phase-tile:last-child  { border-radius: 0 6px 6px 0; }
+  .phase-tile:not(:last-child) {
+    border-right: none;
+  }
+  .phase-tile:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -8px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--mint-dark);
+    z-index: 2;
+  }
+  .phase-tile .pn {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pname {
+    font-family: var(--font-display);
+    font-size: 14.5px; font-weight: 500;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pdesc {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+
+  /* TWO-TRACKS BAND */
+  .tracks-band {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .tracks-band .t {
+    padding-left: 12px;
+    border-left: 3px solid var(--mint-dark);
+  }
+  .tracks-band .t.lead {
+    border-left-color: var(--lavender);
+  }
+  .tracks-band .t .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .tracks-band .t.lead .lbl { color: var(--lavender-text); }
+  .tracks-band .t p {
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.55;
+  }
+  .tracks-band .t p strong { color: var(--dark); font-weight: 600; }
+
+  /* THREE-LEVEL BAND */
+  .levels-band {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 6px 0 4px 0;
+  }
+  .level-box {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-top: 3px solid var(--mint-dark);
+    padding: 12px 14px;
+  }
+  .level-box.l2 { border-top-color: var(--peach); }
+  .level-box.l3 { border-top-color: var(--lavender); }
+  .level-box.feat { border-top-color: var(--dark); }
+  .level-box .lh {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .level-box.l2 .lh { color: var(--peach-text); }
+  .level-box.l3 .lh { color: var(--lavender-text); }
+  .level-box.feat .lh { color: var(--dark); }
+  .level-box .lname {
+    font-family: var(--font-display);
+    font-size: 13.5px; font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 4px;
+  }
+  .level-box p {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  .level-box p strong { color: var(--dark); font-weight: 600; }
+
+  /* BACKLOG TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px 0;
+    font-size: 13px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  thead th {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 12px;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  tbody td.b-init { color: var(--dark); font-weight: 600; }
+  tbody tr:hover td { background: var(--mint-soft); }
+
+  tr.phase-row td {
+    background: var(--cream-dark) !important;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dark);
+    padding: 8px 12px;
+  }
+  tr.phase-row td .ptag {
+    color: var(--mint-text);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  tr.phase-row td .pmeta {
+    color: var(--gray-light);
+    font-weight: 400;
+    margin-left: 8px;
+  }
+
+  .id { font-family: var(--font-mono); font-size: 11px; color: var(--gray-light); white-space: nowrap; }
+
+  /* TRACK CHIPS */
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .chip-eng  { background: var(--mint-soft); color: var(--mint-text); border: 1px solid var(--mint); }
+  .chip-lead { background: #ECEAFB; color: var(--lavender-text); border: 1px solid var(--lavender); }
+
+  /* PRIORITY BADGES */
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .b-crit { background: #fee2e2; color: #991b1b; }
+  .b-high { background: #fef3c7; color: #92400e; }
+  .b-med  { background: #dbeafe; color: #1e40af; }
+  .b-fut  { background: #f3f4f6; color: #374151; }
+
+  .dep {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gray-light);
+    background: var(--cream-dark);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    margin-right: 3px;
+    white-space: nowrap;
+  }
+
+  /* OUTCOMES STRIP */
+  .outcomes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 10px 0 4px 0;
+  }
+  .outcome {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-top: 3px solid var(--mint-dark);
+    padding: 12px 14px;
+  }
+  .outcome.p2 { border-top-color: var(--lavender); }
+  .outcome.p3 { border-top-color: var(--peach); }
+  .outcome.p4 { border-top-color: var(--dark); }
+  .outcome .ph {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .outcome.p2 .ph { color: var(--lavender-text); }
+  .outcome.p3 .ph { color: var(--peach-text); }
+  .outcome.p4 .ph { color: var(--dark); }
+  .outcome p {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  .outcome p strong { color: var(--dark); font-weight: 600; }
+
+  /* PRINCIPLES BAND */
+  .principles {
+    background: var(--dark);
+    color: var(--cream);
+    border-radius: 6px;
+    padding: 16px 22px;
+    margin-top: 8px;
+  }
+  .principles .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 8px;
+  }
+  .principles ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 18px;
+  }
+  .principles ul li {
+    font-size: 13px;
+    color: var(--cream);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .principles ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0; top: -2px;
+    color: var(--mint);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .principles ul li strong { color: var(--mint); font-weight: 500; }
+
+  /* AGENT PIPELINE MAP */
+  .ap-legend {
+    display: flex; gap: 18px;
+    margin: 10px 0 14px 0;
+    flex-wrap: wrap;
+  }
+  .ap-leg {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-mid);
+  }
+  .ap-leg::before {
+    content: '';
+    width: 16px; height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .ap-leg.gen::before     { background: var(--mint-dark); }
+  .ap-leg.gate::before    { background: var(--peach); }
+  .ap-leg.monitor::before { background: var(--lavender); }
+  .ap-leg.orch::before    { background: var(--dark-alt); }
+
+  .ap-grid {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px 12px 16px;
+    margin-bottom: 6px;
+  }
+
+  .ap-header {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .ap-stages {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 2px;
+  }
+  .ap-stage {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--dark);
+    text-align: center;
+    padding: 6px 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--cream-dark);
+    border-radius: 2px;
+    line-height: 1.2;
+  }
+
+  .ap-section-head {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .ap-section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    padding: 4px 0 0 4px;
+  }
+  .ap-section-rule {
+    height: 1px;
+    background: var(--border);
+    align-self: center;
+  }
+
+  .ap-agent {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 3px;
+  }
+  .ap-name {
+    font-size: 12px;
+    color: var(--dark);
+    padding: 6px 8px;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--cream);
+    border-radius: 2px;
+    border-left: 2px solid var(--mint-dark);
+  }
+  .ap-name .id {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gray-light);
+    margin-right: 2px;
+  }
+  .ap-track {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 2px;
+    background: var(--cream);
+    border-radius: 2px;
+    min-height: 28px;
+    padding: 3px;
+  }
+  .ap-bar {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    padding: 2px 0;
+    line-height: 1;
+  }
+  .ap-bar.gen     { background: var(--mint-dark); color: var(--white); }
+  .ap-bar.gate    { background: var(--peach); color: var(--peach-text); }
+  .ap-bar.monitor { background: var(--lavender); color: var(--lavender-text); }
+  .ap-bar.orch    { background: var(--dark-alt); color: var(--mint); }
+
+  .ap-bar.human {
+    background: var(--white);
+    color: var(--dark);
+    border: 1px solid var(--border);
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
+    padding: 2px 3px;
+  }
+
+  .ap-leg.human::before {
+    background: var(--white);
+    border: 1px solid var(--border);
+  }
+
+  .ap-agent.role-cust .ap-name { border-left-color: var(--lavender); }
+  .ap-agent.role-cie  .ap-name { border-left-color: var(--mint-dark); }
+  .ap-agent.role-dev  .ap-name { border-left-color: var(--peach); }
+  .ap-agent.role-tl   .ap-name { border-left-color: var(--dark); }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--gray-light);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Support Process &middot; 2026 Action Plan &middot; v1</div>
+    <h1>From manual triage to <span>AI-augmented support flow.</span></h1>
+    <div class="header-sub">Every customer ticket lives in a per-client Jira project. Agents groom, triage, and route inside Jira &mdash; three support levels, every customer-bound comment approved until trust is earned, every feature signal lands on the product ideas board.</div>
+  </div>
+  <div class="header-right">
+    <svg width="100" height="26" viewBox="0 0 285 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="viax">
+      <path d="M258.095 74C242.927 74 232.079 64.6667 232.079 47.7143C232.079 30.0953 242.927 21.5238 258.095 21.5238C273.359 21.5238 284.207 30.0953 284.207 47.7143C284.207 64.6667 273.359 74 258.095 74ZM258.095 63.0476C266.351 63.0476 272.207 57.5238 272.207 47.8095C272.207 37.7143 266.351 32.5715 258.095 32.5715C249.935 32.5715 244.079 37.7143 244.079 47.8095C244.079 57.5238 249.935 63.0476 258.095 63.0476Z" fill="#1E1E1E"/>
+      <path d="M212.084 72.8571V22.6667H224.948V72.8571H212.084ZM211.028 0H226.004V13.2381H211.028V0Z" fill="#1E1E1E"/>
+      <path d="M189.174 59.5237H203.19V72.857H189.174V59.5237Z" fill="#1E1E1E"/>
+      <path d="M100.267 74C85.9627 74 75.5947 64.7619 75.5947 47.8095C75.5947 30.1905 85.9627 21.5238 100.267 21.5238C108.331 21.5238 114.667 24.5715 118.507 30.4762L119.659 22.6667H128.683V72.8572H119.467L118.411 65.0476C114.571 70.8572 108.331 74 100.267 74ZM101.611 63.0476C109.867 63.0476 115.723 57.5238 115.723 47.8095C115.723 37.7143 109.867 32.5715 101.611 32.5715C93.4507 32.5715 87.5947 37.7143 87.5947 47.8095C87.5947 57.5238 93.4507 63.0476 101.611 63.0476Z" fill="#1E1E1E"/>
+      <path d="M55.6004 72.8571V22.6667H68.4644V72.8571H55.6004ZM54.5444 0H69.5204V13.2381H54.5444V0Z" fill="#1E1E1E"/>
+      <path d="M18.336 72.8571L0 30.9523V22.6666H9.984L24.96 61.0475L39.648 22.6666H49.536V30.9523L31.296 72.8571H18.336Z" fill="#1E1E1E"/>
+      <path d="M158.755 57.8916L147.656 72.9756H137V63.0879L149.21 48.3457L158.755 57.8916ZM181.064 63.0879V72.9756H170.12L159.23 58.1768L168.898 48.5088L181.064 63.0879ZM158.622 36.5127L148.93 46.2051L137 31.8877V22H148.136L158.622 36.5127ZM181.064 31.8877L169.18 46.043L159.367 36.2314L169.928 22H181.064V31.8877Z" fill="#5ED49A"/>
+    </svg>
+    <div class="tag">v1 &middot; May 2026</div>
+  </div>
+</div>
+
+<!-- PROBLEM / TARGET -->
+<h2>Problem &amp; Target</h2>
+<div class="pt-row">
+  <div class="pt-box pt-current">
+    <div class="lbl">Today</div>
+    <p>Tickets arrive incomplete; humans chase customers for repro details. Triage is tribal &mdash; whoever picks up the ticket decides where it goes. L1 questions (config, how-to) eat <strong>engineering time</strong>. Customers wait in silence while a ticket sits. Feature requests get lost in comment threads. The same issue surfaces three times before anyone notices the pattern.</p>
+  </div>
+  <div class="pt-box pt-target">
+    <div class="lbl">Target</div>
+    <p>Tickets are <strong>acknowledged in seconds</strong> and groomed within minutes. A triage agent classifies every ticket into L1 / L2 / L3 / Feature. L1 answers are drafted from product docs and past tickets; L2 prepares devs with code locations and repro; L3 humans code on agent-prepped tickets. Feature requests auto-create a vx ticket on the ideas board. The customer hears something at every step.</p>
+  </div>
+</div>
+
+<!-- THREE-LEVEL MODEL -->
+<h2>Three Levels + Feature Path</h2>
+<div class="levels-band">
+  <div class="level-box">
+    <div class="lh">Level 01</div>
+    <div class="lname">Agent-led answer</div>
+    <p>Config change, platform how-to, known issue. <strong>Agent drafts, CIE approves</strong> in V1; agent auto-posts above confidence threshold in Phase 04. Grounded in KB + resolved tickets.</p>
+  </div>
+  <div class="level-box l2">
+    <div class="lh">Level 02</div>
+    <div class="lname">Agent-guided dev</div>
+    <p>Deeper issue; likely needs code. Agent <strong>guides a viax developer</strong> with suspected code locations, repro, and similar past fixes &mdash; or flags the issue as architectural and escalates.</p>
+  </div>
+  <div class="level-box l3">
+    <div class="lh">Level 03</div>
+    <div class="lname">Human code change</div>
+    <p>Architectural or non-trivial. Human dev makes the change on an <strong>agent-prepped ticket</strong> (repro, code map, customer impact already attached). Agents draft code suggestions later, once trust is earned.</p>
+  </div>
+  <div class="level-box feat">
+    <div class="lh">Feature</div>
+    <div class="lname">vx ticket to Product</div>
+    <p>Not a bug &mdash; a feature ask. Agent <strong>creates a vx ticket</strong> on the product ideas board with original context, customer, and signal weight. Product prioritizes on cadence.</p>
+  </div>
+</div>
+
+<!-- PHASE FLOW -->
+<h2>Phase Flow</h2>
+<div class="phase-strip">
+  <div class="phase-tile">
+    <div class="pn">Phase 01</div>
+    <div class="pname">Foundation</div>
+    <div class="pdesc">Support Coordinator orchestrates the pipeline. Grooming, auto-ack, PII scrubbing live. Three-level model, comm SLA, approval policy.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 02</div>
+    <div class="pname">Triage &amp; Resolution</div>
+    <div class="pdesc">Triage agent classifies. KB/RAG feeds L1 answers. Sentiment + VIP flags. Status updates while customers wait. vx tickets reach Product.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 03</div>
+    <div class="pname">Diagnostic Depth</div>
+    <div class="pdesc">L2 dev guidance. KB capture from every resolution. Hotspot detection. Post-resolution QA + CSAT. Eval harness keeps agents honest.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 04</div>
+    <div class="pname">Autonomy</div>
+    <div class="pdesc">L1 auto-posts above confidence threshold. Agent-assisted L3 code suggestions. Regression tests captured from resolved bugs.</div>
+  </div>
+</div>
+
+<!-- TWO TRACKS -->
+<h2>Two Tracks</h2>
+<div class="tracks-band">
+  <div class="t">
+    <div class="lbl">ENG &middot; Engineering Track</div>
+    <p>Build and operate the agents, KB ingestion, Jira integration, eval harness, observability. <strong>Human-in-the-loop on every code-bound output</strong> &mdash; L2 guidance, L3 code suggestions, dev-facing recommendations all reviewed by a viax engineer.</p>
+  </div>
+  <div class="t lead">
+    <div class="lbl">LEAD &middot; Support &amp; Product Leadership</div>
+    <p>Own customer-bound communication, support policy, escalation playbook, CSAT, and vx prioritization. <strong>Human-in-the-loop on every customer-bound Jira comment</strong> until confidence threshold and evals warrant unattended auto-post.</p>
+  </div>
+</div>
+
+<!-- AGENT PIPELINE MAP -->
+<h2>Agent Pipeline Map</h2>
+<p style="margin-bottom: 8px;">When each agent fires &mdash; and where humans still have a task &mdash; from <strong>ticket submission</strong> through <strong>post-close learning</strong>. Humans approve, decide, and validate. Agents do the gathering, classifying, and synthesis between the human steps.</p>
+
+<div class="ap-legend">
+  <span class="ap-leg gen">Generates</span>
+  <span class="ap-leg gate">Gates</span>
+  <span class="ap-leg monitor">Monitors</span>
+  <span class="ap-leg orch">Orchestrates</span>
+  <span class="ap-leg human">Human task</span>
+</div>
+
+<div class="ap-grid">
+
+  <!-- Stage headers -->
+  <div class="ap-header">
+    <div></div>
+    <div class="ap-stages">
+      <div class="ap-stage">Submit</div>
+      <div class="ap-stage">Groom</div>
+      <div class="ap-stage">Triage</div>
+      <div class="ap-stage">L1 Answer</div>
+      <div class="ap-stage">L2 Diagnose</div>
+      <div class="ap-stage">Handoff</div>
+      <div class="ap-stage">L3 Code</div>
+      <div class="ap-stage">Test</div>
+      <div class="ap-stage">Verify</div>
+      <div class="ap-stage">Close</div>
+      <div class="ap-stage">Learn</div>
+    </div>
+  </div>
+
+  <!-- HUMAN GATES -->
+  <div class="ap-section-head">
+    <div class="ap-section-label">Human gates &middot; who acts, what they do</div>
+    <div class="ap-section-rule"></div>
+  </div>
+
+  <div class="ap-agent role-cust">
+    <div class="ap-name">Customer</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 1;">create ticket</div>
+      <div class="ap-bar human" style="grid-column: 2;">clarify</div>
+      <div class="ap-bar human" style="grid-column: 9;">verify fix</div>
+      <div class="ap-bar human" style="grid-column: 10;">sign-off</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-cie">
+    <div class="ap-name">CIE / Support Lead</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 3;">confirm triage</div>
+      <div class="ap-bar human" style="grid-column: 4;">approve L1 reply</div>
+      <div class="ap-bar human" style="grid-column: 6;">route to dev</div>
+      <div class="ap-bar human" style="grid-column: 10;">close + CSAT</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-dev">
+    <div class="ap-name">viax Developer</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 5;">own diagnosis</div>
+      <div class="ap-bar human" style="grid-column: 7;">code fix</div>
+      <div class="ap-bar human" style="grid-column: 8;">test</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-tl">
+    <div class="ap-name">Tech Lead / Product</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 5;">arch call</div>
+      <div class="ap-bar human" style="grid-column: 6;">accept vx</div>
+      <div class="ap-bar human" style="grid-column: 7;">review code</div>
+      <div class="ap-bar human" style="grid-column: 11;">retro</div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="ap-section-head">
+    <div class="ap-section-label">Agents &middot; when each fires</div>
+    <div class="ap-section-rule"></div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-00</span> Support Coordinator (orchestrator)</div>
+    <div class="ap-track">
+      <div class="ap-bar orch" style="grid-column: 1 / 12;">orch</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-02</span> Auto-acknowledgment</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 1;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-01</span> Ticket Grooming</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 1 / 4;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-04</span> Reproducibility</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 2 / 4;">gen</div>
+      <div class="ap-bar gen" style="grid-column: 5 / 7;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-03</span> PII / data scrubbing</div>
+    <div class="ap-track">
+      <div class="ap-bar gate" style="grid-column: 1 / 12;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-05</span> Similar tickets / dedup</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 3 / 5;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-06</span> Triage (L1/L2/L3/Feature)</div>
+    <div class="ap-track">
+      <div class="ap-bar gate" style="grid-column: 3;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-07</span> Knowledge (RAG)</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 3 / 6;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-08</span> L1 Resolution</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 4;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-09</span> Sentiment / VIP</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 1 / 12;">monitor</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-12</span> L2 Diagnostic</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 5 / 7;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-11</span> vx Ticket creator</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 6;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-10</span> Status updates</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 5 / 10;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-13</span> Hotspot / trend</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 3;">monitor</div>
+      <div class="ap-bar monitor" style="grid-column: 11;">monitor</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-15</span> Post-resolution QA + CSAT</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 10 / 12;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-14</span> Knowledge capture</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 11;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">S-16</span> Eval &amp; drift monitor</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 1 / 12;">monitor</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BACKLOG -->
+<h2>Initiative Backlog</h2>
+<p style="margin-bottom: 10px;">Items grouped by phase. Each phase builds on the previous &mdash; but engineering and leadership work in parallel <em>within</em> a phase. Priority is independent of phase: a "Critical" item in Phase 2 still ships before any "Medium" item in Phase 1.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 56px;">ID</th>
+      <th style="width: 70px;">Track</th>
+      <th style="width: 220px;">Initiative</th>
+      <th>Description &amp; Acceptance</th>
+      <th style="width: 80px;">Priority</th>
+      <th style="width: 90px;">Depends</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- PHASE 1 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 01 &mdash; Foundation</span> Orchestrator, intake hygiene, policy. The floor everything else builds on. <span class="pmeta">Eng &times; Lead in parallel</span></td></tr>
+
+    <tr>
+      <td class="id">S-00</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Support Coordinator Agent (orchestrator)</td>
+      <td>The conductor of the end-to-end support pipeline. Listens to per-client Jira events &mdash; ticket created, comment added, status change, transition &mdash; and triggers the right downstream agent at the right step. Maintains a single state machine per ticket. Routes escalations to humans at the right gates. Every other agent in this plan plugs into its event bus and reports state back through Jira.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">S-01</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Ticket Grooming agent</td>
+      <td>Checks every new ticket against a required-fields schema (steps to repro, expected vs. actual, environment, build version, customer impact). If anything is missing, comments on the Jira ticket asking the customer for it &mdash; in plain language, with a checklist. Re-checks after each customer reply until the ticket is groom-complete.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-00</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-02</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Auto-acknowledgment agent</td>
+      <td>First Jira comment posts within seconds of ticket creation: confirms receipt, sets expectation by severity (per SLA matrix), and tells the customer what happens next. Sets the tone &mdash; no ticket sits silent.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-00</span><span class="dep">L-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-03</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">PII / data scrubbing layer</td>
+      <td>Every payload passing into an LLM is filtered: customer PII, credentials, secrets, tokens redacted before the prompt is built. Allowlist of fields safe to include. Logged for audit. Non-negotiable guardrail in front of every agent.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-01</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Three-level support model (L1/L2/L3/Feature)</td>
+      <td>Formalized: each level's scope, who owns each level, what gets escalated and when, what the customer is told at each step. Feature path includes vx ticket creation criteria. Documented in Confluence.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-02</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Customer comms SLA matrix</td>
+      <td>First-response, status-update cadence, and resolution target by severity (P0 / P1 / P2 / P3) and customer tier (VIP / strategic / standard). Channel = Jira comment. Confluence as system of record.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-03</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Approval gates + confidence threshold ladder</td>
+      <td>Defines which agent outputs need CIE / engineering approval before posting, and the confidence-threshold ladder for moving agents from supervised &rarr; unattended (the trust path that ends in Phase 04 auto-post). Same pattern as starting humans on L3 code: trust earns autonomy.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-04</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Agent transparency policy + Jira schema</td>
+      <td>Customers are told when an agent is responding (bot signature on agent-authored comments). Standardized Jira ticket schema across every client project &mdash; same required fields, same labels, same severity scale &mdash; so agents can act uniformly.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+
+    <!-- PHASE 2 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 02 &mdash; Triage &amp; Resolution</span> Where customers feel the difference. <span class="pmeta">Depends on Phase 01 floor</span></td></tr>
+
+    <tr>
+      <td class="id">S-04</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Reproducibility agent</td>
+      <td>Pulls the context engineering would otherwise chase: build version, environment, customer ID, recent platform logs, last actions taken by the affected user, related deploys. Attaches as a structured block on the Jira ticket so L1/L2 can act without re-asking.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-01</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-05</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Similar tickets / dedup agent</td>
+      <td>Searches across all client Jira projects + the resolved-ticket corpus for related issues. Links them on the ticket. Flags duplicates and "this issue is already fixed in release X" cases. Feeds the hotspot agent.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-00</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-06</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Triage agent</td>
+      <td>Classifies every groom-complete ticket: <strong>L1 (config / how-to)</strong>, <strong>L2 (likely code)</strong>, <strong>L3 (architectural)</strong>, or <strong>Feature</strong>. Also assigns severity, affected module, and customer tier. Confidence score attached. CIE confirms in V1; auto-routes above threshold in Phase 04.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-01</span><span class="dep">S-04</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-07</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Knowledge agent (RAG)</td>
+      <td>Indexes viax product docs, runbooks, configuration guides, and resolved tickets. Surfaces grounded answers with citations to source docs / past tickets. Used by Triage, L1, and L2 agents. Re-indexes on doc changes and on every resolved ticket via S-14.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-00</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-08</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">L1 Resolution agent</td>
+      <td>For tickets triaged as L1, drafts an answer grounded in the KB &mdash; config change, platform how-to, link to docs. Cites sources. <strong>V1: CIE approves before posting to Jira comment.</strong> Phase 04: auto-posts above confidence threshold.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-06</span><span class="dep">S-07</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-09</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Sentiment / VIP detector</td>
+      <td>Reads tone of ticket + customer comments. Cross-references customer tier. Flags angry-VIP-on-P0 to Support Lead in real time. Boosts severity automatically with audit trail.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-10</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Status update agent</td>
+      <td>While a ticket sits in L2/L3, agent posts proactive Jira comment updates per SLA cadence: "Still investigating", "Identified, engineering working on fix", "Fix merged, deploying to your environment". Silence is the #1 CSAT killer.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-00</span><span class="dep">L-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-11</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">vx Ticket creator</td>
+      <td>When Triage classifies as Feature, creates a vx ticket on the product ideas board with full context: customer, original ask, signal weight (how many other customers asked something similar), business value notes. Links back to source Jira ticket. Customer is notified.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-06</span><span class="dep">S-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-05</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Severity &amp; escalation matrix</td>
+      <td>P0/P1/P2/P3 definitions, VIP override rules, on-call escalation triggers, who can wake whom at 2am. Drives Sentiment/VIP agent thresholds.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">L-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-06</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">vx ticket review SLA with Product</td>
+      <td>Product commits to reviewing new vx tickets from support within N business days. Closes the loop so support reps and customers see something happen with feature requests.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">S-11</span></td>
+    </tr>
+
+    <!-- PHASE 3 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 03 &mdash; Diagnostic Depth</span> Internal process gets significantly smoother. <span class="pmeta">Multiplier on Phase 1&ndash;2</span></td></tr>
+
+    <tr>
+      <td class="id">S-12</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">L2 Diagnostic agent</td>
+      <td>For L2 tickets: reads code (with PII scrubbing), the failing scenario, and recent commits to suggest likely cause + suspected file/function locations + similar past fixes. Output is for the assigned <strong>viax developer</strong>, not the customer. Also decides: "this looks architectural &mdash; escalating to L3."</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">S-06</span><span class="dep">S-07</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-13</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Hotspot / trend detector</td>
+      <td>Watches ticket clusters across all client projects. Flags when 3+ tickets touch the same module / error / config path within a window. Raises signal to product + eng &mdash; and auto-creates a vx ticket when the pattern is a feature gap rather than a bug.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-06</span><span class="dep">S-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-14</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Knowledge capture agent</td>
+      <td>When an L2/L3 ticket resolves, drafts a KB article: the symptom, the root cause, the fix, the config or code change. Engineer reviews and publishes. Closes the loop so L1 + KB agent get smarter automatically with every resolution.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-08</span><span class="dep">S-12</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-15</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Post-resolution QA + CSAT</td>
+      <td>After ticket closes, agent reviews its own outputs against the eventual fix (did the L1 answer hold up? was triage correct?). Sends a one-question CSAT to the customer. Feeds the eval suite.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-08</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-16</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Eval &amp; drift monitor</td>
+      <td>Every agent has a benchmark suite (ground-truth ticket set) that runs on prompt or model changes. Output quality tracked over time. Confidence-vs-correctness curves feed the threshold ladder (L-03). "Agent on call" engineer per agent flow.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-08</span><span class="dep">S-12</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-07</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">KB governance &amp; ownership</td>
+      <td>Named owner per module-area KB. Review cadence. Quality bar for what gets published from S-14 drafts. Stale-content sweep.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">S-14</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-08</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Quarterly support health review</td>
+      <td>60-min ritual with Support / Eng / Product / CIE. CSAT, deflection rate, MTTR by level, hotspot themes, agent quality (eval scores). Output feeds next-quarter priorities &amp; vx prioritization.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">S-15</span><span class="dep">S-13</span></td>
+    </tr>
+
+    <!-- PHASE 4 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 04 &mdash; Autonomy</span> Strategic. Trust earned, autonomy granted. <span class="pmeta">Highest leverage once Phases 1&ndash;3 are real</span></td></tr>
+
+    <tr>
+      <td class="id">S-17</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">L1 auto-post above confidence threshold</td>
+      <td>Per the L-03 trust ladder + S-16 evals, the L1 Resolution agent posts directly to the customer Jira comment when confidence &gt; threshold &amp; eval score &gt; bar. Everything below threshold still routes to CIE for approval. Audit log of every auto-post.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-16</span><span class="dep">L-03</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-18</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Agent-assisted L3 code suggestions</td>
+      <td>Agent drafts proposed code changes (MR draft + tests) for L3 tickets that have been guided through L2 diagnosis. Human dev reviews, edits, owns the commit. Same trust-ladder pattern as L1: humans first, autonomy later.</td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td><span class="dep">S-12</span><span class="dep">S-16</span></td>
+    </tr>
+    <tr>
+      <td class="id">S-19</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Regression test capture from bugs</td>
+      <td>When a bug ticket closes, agent drafts a regression test for the failing scenario and proposes it to the testing agents in the release pipeline. Closes the loop with the release process &mdash; the bug never comes back.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">S-14</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-09</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Trust ladder criteria for autonomy</td>
+      <td>Documented criteria for promoting an agent from supervised &rarr; auto-post: eval score, sample size, CSAT impact, false-positive rate, error severity. Reviewed quarterly. Demoting is also defined &mdash; a bad week pulls an agent back to supervised mode.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">S-16</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-10</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Customer-visible AI showcase</td>
+      <td>Position agent-augmented support as a customer- and investor-visible demonstration. Deflection rate, time-to-first-response, MTTR &mdash; real numbers, not slideware.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">S-15</span></td>
+    </tr>
+
+  </tbody>
+</table>
+
+<!-- OUTCOMES BY PHASE -->
+<h2>Outcomes by Phase</h2>
+<div class="outcomes">
+  <div class="outcome">
+    <div class="ph">Phase 01</div>
+    <p><strong>No ticket sits silent.</strong> Auto-ack in seconds. Grooming agent collects missing info without a human in the loop. PII scrubbed at the gate. Three-level model + comm SLA + approval policy end the per-ticket re-debate.</p>
+  </div>
+  <div class="outcome p2">
+    <div class="ph">Phase 02</div>
+    <p><strong>Triage stops being tribal.</strong> Every groom-complete ticket gets classified, severity-tagged, and routed. L1 answers drafted from KB. Customers hear updates while they wait. Feature requests reach Product as vx tickets.</p>
+  </div>
+  <div class="outcome p3">
+    <div class="ph">Phase 03</div>
+    <p><strong>Devs go from cold to coding in minutes.</strong> L2 diagnostic agent surfaces likely cause + code locations. Hotspot signal reaches Eng + Product early. KB grows on its own with every resolution.</p>
+  </div>
+  <div class="outcome p4">
+    <div class="ph">Phase 04</div>
+    <p><strong>Autonomy earned, not assumed.</strong> L1 agent auto-posts above the confidence threshold. L3 code suggestions land in MR drafts for human review. Bugs become regression tests in the release pipeline.</p>
+  </div>
+</div>
+
+<!-- PRINCIPLES -->
+<h2>Guiding Principles</h2>
+<div class="principles">
+  <div class="lbl">Non-negotiables</div>
+  <ul>
+    <li>Agents <strong>replace data gathering</strong>, not human judgment.</li>
+    <li>Every <strong>customer-bound Jira comment</strong> is CIE-approved until evals + threshold warrant auto-post.</li>
+    <li>Every <strong>code-bound output</strong> has engineering review &mdash; L2 guidance, L3 suggestions, all of it.</li>
+    <li>Customers are <strong>told when an agent is responding</strong> &mdash; bot signature, no impersonation.</li>
+    <li><strong>Trust is earned per agent</strong>, measured by evals, granted by L-09 criteria.</li>
+    <li><strong>PII is scrubbed</strong> at the gate before any LLM call. No exceptions.</li>
+    <li>Phases are <strong>sequential at the macro</strong> level; in-phase work runs in parallel.</li>
+    <li>Priority is <strong>independent of phase</strong> &mdash; Critical in Phase 2 ships before Medium in Phase 1.</li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  <div>viax Support Process 2026 &middot; v1 Action Plan &middot; Internal Draft</div>
+  <div>viax.io &middot; &copy; 2026</div>
+</div>
+
+</body>
+</html>
