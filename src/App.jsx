@@ -8,6 +8,7 @@ import IdeasPage from '@/pages/IdeasPage'
 import IdeaVotePage from '@/pages/IdeaVotePage'
 import FormaOnePagerPage from '@/pages/FormaOnePagerPage'
 import ReleasePipelinePage from '@/pages/ReleasePipelinePage'
+import SupportPage from '@/pages/SupportPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/planning/session/:sessionId" element={<SessionPage />} />
             <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/ideas/vote/:sessionId" element={<IdeaVotePage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>

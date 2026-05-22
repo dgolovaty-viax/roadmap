@@ -55,6 +55,9 @@ export default function Nav() {
         <NavLink to="/ideas" className={navLinkClass}>
           Ideas
         </NavLink>
+        <NavLink to="/support" className={navLinkClass}>
+          Support
+        </NavLink>
       </div>
     </nav>
   )

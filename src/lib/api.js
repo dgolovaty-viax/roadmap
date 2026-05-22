@@ -82,6 +82,9 @@ export const api = {
     components:        ()                            => request('GET',  '/api/jira/components'),
     refreshComponents: ()                            => request('POST', '/api/jira/components/refresh'),
     createIssue:       (payload)                     => request('POST', '/api/jira/issue', payload),
+    // Proxies POST /rest/api/3/search/jql via the backend (Support dashboard).
+    search:            ({ jql, fields, maxResults, nextPageToken }) =>
+                         request('POST', '/api/jira/search', { jql, fields, maxResults, nextPageToken }),
   },
 
   // ── Suggested Ideas (from Granola meeting scans) ─────────────────────

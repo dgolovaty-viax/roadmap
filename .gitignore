@@ -6,6 +6,10 @@
 node_modules/
 dist/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Supabase local dev
 .supabase/
 supabase/.branches/

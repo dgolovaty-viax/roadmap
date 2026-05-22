@@ -1018,6 +1018,34 @@ def create_jira_issue():
     }), 201
 
 
+# ── Jira search (Support dashboard) ────────────────────────────────────
+#
+# Thin pass-through to Jira Cloud's POST /rest/api/3/search/jql so the
+# Support page can run the same JQL queries the live artifact used to,
+# but from the deployed app (no MCP in the browser). Reuses the existing
+# _jira_request helper for auth + transport.
+
+@app.route("/api/jira/search", methods=["POST"])
+def jira_search():
+    if not _jira_configured():
+        return jsonify({"error": "Jira credentials are not configured (set JIRA_EMAIL and JIRA_API_TOKEN)"}), 503
+
+    body = request.get_json() or {}
+    payload = {
+        "jql":        body.get("jql", ""),
+        "fields":     body.get("fields") or [],
+        "maxResults": body.get("maxResults", 50),
+    }
+    if body.get("nextPageToken"):
+        payload["nextPageToken"] = body["nextPageToken"]
+
+    status, data = _jira_request("POST", "/rest/api/3/search/jql", json_body=payload)
+    if status >= 400:
+        return jsonify({"error": "Jira returned an error", "status": status, "body": data}), status
+
+    return jsonify(data)
+
+
 # ── Health ─────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])
