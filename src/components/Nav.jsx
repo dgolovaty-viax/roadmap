@@ -46,6 +46,9 @@ export default function Nav() {
         <NavLink to="/forma-one-pager" className={navLinkClass}>
           Forma One Pager
         </NavLink>
+        <NavLink to="/release-pipeline" className={navLinkClass}>
+          AI-Augmented Releasing
+        </NavLink>
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>

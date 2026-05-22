@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax Release Pipeline 2026 — v4 Action Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:        #F8F7F6;
+    --cream-dark:   #F2F1F0;
+    --white:        #FEFEFE;
+    --dark:         #1E1E1E;
+    --dark-alt:     #2A2A2A;
+    --gray-light:   #8A8A8A;
+    --gray-mid:     #525252;
+    --border:       #E2E0DC;
+
+    --mint:         #90E9B8;
+    --mint-dark:    #5ED49A;
+    --mint-text:    #177558;
+    --mint-soft:    #E8F8EE;
+
+    --lavender:     #C3BEF7;
+    --lavender-text:#4A3D9E;
+    --peach:        #FCD0A1;
+    --peach-text:   #9B5B12;
+
+    --red:          #D9534F;
+    --red-soft:     #FCE8E6;
+
+    --font-display: "Funnel Sans", Inter, system-ui, sans-serif;
+    --font-mono:    "DM Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-display);
+    color: var(--dark);
+    background: var(--cream);
+    line-height: 1.55;
+    padding: 36px;
+    max-width: 1200px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { max-width: 820px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 500;
+    letter-spacing: -0.5px; line-height: 1.2;
+    color: var(--dark);
+  }
+  h1 span { color: var(--mint-dark); }
+  .header-sub {
+    font-size: 13.5px;
+    color: var(--gray-mid);
+    margin-top: 6px;
+    line-height: 1.55;
+  }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-right svg { display: block; margin-left: auto; }
+  .header-right .tag {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin-top: 6px;
+  }
+
+  /* SECTION HEADERS */
+  h2 {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin: 32px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--mint-dark);
+    display: inline-block;
+  }
+  h3 {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin: 18px 0 8px 0;
+  }
+  p { font-size: 13.5px; color: var(--gray-mid); line-height: 1.6; }
+
+  /* PROBLEM / TARGET ROW */
+  .pt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .pt-box {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .pt-current { border-left: 3px solid var(--red); }
+  .pt-target  { border-left: 3px solid var(--mint-dark); }
+
+  .pt-box .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pt-current .lbl { color: var(--red); }
+  .pt-target  .lbl { color: var(--mint-text); }
+  .pt-box p { font-size: 13px; line-height: 1.55; color: var(--gray-mid); }
+  .pt-box p strong { color: var(--dark); font-weight: 600; }
+
+  /* PHASE FLOW STRIP */
+  .phase-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: 6px 0 4px 0;
+  }
+  .phase-tile {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 14px 16px 12px 16px;
+    position: relative;
+  }
+  .phase-tile:first-child { border-radius: 6px 0 0 6px; }
+  .phase-tile:last-child  { border-radius: 0 6px 6px 0; }
+  .phase-tile:not(:last-child) {
+    border-right: none;
+  }
+  .phase-tile:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -8px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--mint-dark);
+    z-index: 2;
+  }
+  .phase-tile .pn {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pname {
+    font-family: var(--font-display);
+    font-size: 14.5px; font-weight: 500;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pdesc {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+
+  /* TWO-TRACKS BAND */
+  .tracks-band {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .tracks-band .t {
+    padding-left: 12px;
+    border-left: 3px solid var(--mint-dark);
+  }
+  .tracks-band .t.lead {
+    border-left-color: var(--lavender);
+  }
+  .tracks-band .t .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .tracks-band .t.lead .lbl { color: var(--lavender-text); }
+  .tracks-band .t p {
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.55;
+  }
+  .tracks-band .t p strong { color: var(--dark); font-weight: 600; }
+
+  /* BACKLOG TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px 0;
+    font-size: 13px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  thead th {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 12px;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  tbody td.b-init { color: var(--dark); font-weight: 600; }
+  tbody tr:hover td { background: var(--mint-soft); }
+
+  tr.phase-row td {
+    background: var(--cream-dark) !important;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dark);
+    padding: 8px 12px;
+  }
+  tr.phase-row td .ptag {
+    color: var(--mint-text);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  tr.phase-row td .pmeta {
+    color: var(--gray-light);
+    font-weight: 400;
+    margin-left: 8px;
+  }
+
+  .id { font-family: var(--font-mono); font-size: 11px; color: var(--gray-light); white-space: nowrap; }
+
+  /* TRACK CHIPS */
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .chip-eng  { background: var(--mint-soft); color: var(--mint-text); border: 1px solid var(--mint); }
+  .chip-lead { background: #ECEAFB; color: var(--lavender-text); border: 1px solid var(--lavender); }
+
+  /* PRIORITY BADGES */
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .b-crit { background: #fee2e2; color: #991b1b; }
+  .b-high { background: #fef3c7; color: #92400e; }
+  .b-med  { background: #dbeafe; color: #1e40af; }
+  .b-fut  { background: #f3f4f6; color: #374151; }
+
+  .dep {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gray-light);
+    background: var(--cream-dark);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    margin-right: 3px;
+    white-space: nowrap;
+  }
+
+  /* OUTCOMES STRIP */
+  .outcomes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 10px 0 4px 0;
+  }
+  .outcome {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-top: 3px solid var(--mint-dark);
+    padding: 12px 14px;
+  }
+  .outcome.p2 { border-top-color: var(--lavender); }
+  .outcome.p3 { border-top-color: var(--peach); }
+  .outcome.p4 { border-top-color: var(--dark); }
+  .outcome .ph {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .outcome.p2 .ph { color: var(--lavender-text); }
+  .outcome.p3 .ph { color: var(--peach-text); }
+  .outcome.p4 .ph { color: var(--dark); }
+  .outcome p {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  .outcome p strong { color: var(--dark); font-weight: 600; }
+
+  /* PRINCIPLES BAND */
+  .principles {
+    background: var(--dark);
+    color: var(--cream);
+    border-radius: 6px;
+    padding: 16px 22px;
+    margin-top: 8px;
+  }
+  .principles .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 8px;
+  }
+  .principles ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 18px;
+  }
+  .principles ul li {
+    font-size: 13px;
+    color: var(--cream);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .principles ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0; top: -2px;
+    color: var(--mint);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .principles ul li strong { color: var(--mint); font-weight: 500; }
+
+  /* AGENT PIPELINE MAP */
+  .ap-legend {
+    display: flex; gap: 18px;
+    margin: 10px 0 14px 0;
+    flex-wrap: wrap;
+  }
+  .ap-leg {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-mid);
+  }
+  .ap-leg::before {
+    content: '';
+    width: 16px; height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .ap-leg.gen::before     { background: var(--mint-dark); }
+  .ap-leg.gate::before    { background: var(--peach); }
+  .ap-leg.monitor::before { background: var(--lavender); }
+  .ap-leg.orch::before    { background: var(--dark-alt); }
+
+  .ap-grid {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px 12px 16px;
+    margin-bottom: 6px;
+  }
+
+  .ap-header {
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .ap-stages {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 2px;
+  }
+  .ap-stage {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--dark);
+    text-align: center;
+    padding: 6px 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--cream-dark);
+    border-radius: 2px;
+    line-height: 1.2;
+  }
+
+  .ap-section-head {
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .ap-section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    padding: 4px 0 0 4px;
+  }
+  .ap-section-rule {
+    height: 1px;
+    background: var(--border);
+    align-self: center;
+  }
+
+  .ap-agent {
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 3px;
+  }
+  .ap-name {
+    font-size: 12px;
+    color: var(--dark);
+    padding: 6px 8px;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--cream);
+    border-radius: 2px;
+    border-left: 2px solid var(--mint-dark);
+  }
+  .ap-name .id {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gray-light);
+    margin-right: 2px;
+  }
+  .ap-track {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 2px;
+    background: var(--cream);
+    border-radius: 2px;
+    min-height: 28px;
+    padding: 3px;
+  }
+  .ap-bar {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    padding: 2px 0;
+    line-height: 1;
+  }
+  .ap-bar.gen     { background: var(--mint-dark); color: var(--white); }
+  .ap-bar.gate    { background: var(--peach); color: var(--peach-text); }
+  .ap-bar.monitor { background: var(--lavender); color: var(--lavender-text); }
+  .ap-bar.orch    { background: var(--dark-alt); color: var(--mint); }
+
+  .ap-bar.human {
+    background: var(--white);
+    color: var(--dark);
+    border: 1px solid var(--border);
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
+    padding: 2px 3px;
+  }
+
+  .ap-leg.human::before {
+    background: var(--white);
+    border: 1px solid var(--border);
+  }
+
+  .ap-agent.role-eng  .ap-name { border-left-color: var(--mint-dark); }
+  .ap-agent.role-tech .ap-name { border-left-color: var(--peach); }
+  .ap-agent.role-lead .ap-name { border-left-color: var(--dark); }
+  .ap-agent.role-cs   .ap-name { border-left-color: var(--lavender); }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--gray-light);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Engineering Process &middot; 2026 Action Plan &middot; v4</div>
+    <h1>From manual handoffs to <span>AI-augmented release flow.</span></h1>
+    <div class="header-sub">A prioritized backlog. Two tracks &mdash; engineering builds and operates; leadership owns policy and customer comms. Four phases. Each phase pays for the next.</div>
+  </div>
+  <div class="header-right">
+    <svg width="100" height="26" viewBox="0 0 285 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="viax">
+      <path d="M258.095 74C242.927 74 232.079 64.6667 232.079 47.7143C232.079 30.0953 242.927 21.5238 258.095 21.5238C273.359 21.5238 284.207 30.0953 284.207 47.7143C284.207 64.6667 273.359 74 258.095 74ZM258.095 63.0476C266.351 63.0476 272.207 57.5238 272.207 47.8095C272.207 37.7143 266.351 32.5715 258.095 32.5715C249.935 32.5715 244.079 37.7143 244.079 47.8095C244.079 57.5238 249.935 63.0476 258.095 63.0476Z" fill="#1E1E1E"/>
+      <path d="M212.084 72.8571V22.6667H224.948V72.8571H212.084ZM211.028 0H226.004V13.2381H211.028V0Z" fill="#1E1E1E"/>
+      <path d="M189.174 59.5237H203.19V72.857H189.174V59.5237Z" fill="#1E1E1E"/>
+      <path d="M100.267 74C85.9627 74 75.5947 64.7619 75.5947 47.8095C75.5947 30.1905 85.9627 21.5238 100.267 21.5238C108.331 21.5238 114.667 24.5715 118.507 30.4762L119.659 22.6667H128.683V72.8572H119.467L118.411 65.0476C114.571 70.8572 108.331 74 100.267 74ZM101.611 63.0476C109.867 63.0476 115.723 57.5238 115.723 47.8095C115.723 37.7143 109.867 32.5715 101.611 32.5715C93.4507 32.5715 87.5947 37.7143 87.5947 47.8095C87.5947 57.5238 93.4507 63.0476 101.611 63.0476Z" fill="#1E1E1E"/>
+      <path d="M55.6004 72.8571V22.6667H68.4644V72.8571H55.6004ZM54.5444 0H69.5204V13.2381H54.5444V0Z" fill="#1E1E1E"/>
+      <path d="M18.336 72.8571L0 30.9523V22.6666H9.984L24.96 61.0475L39.648 22.6666H49.536V30.9523L31.296 72.8571H18.336Z" fill="#1E1E1E"/>
+      <path d="M158.755 57.8916L147.656 72.9756H137V63.0879L149.21 48.3457L158.755 57.8916ZM181.064 63.0879V72.9756H170.12L159.23 58.1768L168.898 48.5088L181.064 63.0879ZM158.622 36.5127L148.93 46.2051L137 31.8877V22H148.136L158.622 36.5127ZM181.064 31.8877L169.18 46.043L159.367 36.2314L169.928 22H181.064V31.8877Z" fill="#5ED49A"/>
+    </svg>
+    <div class="tag">v4 &middot; May 2026</div>
+  </div>
+</div>
+
+<!-- PROBLEM / TARGET -->
+<h2>Problem &amp; Target</h2>
+<div class="pt-row">
+  <div class="pt-box pt-current">
+    <div class="lbl">Today</div>
+    <p>2&ndash;4 major releases per year. <strong>5&ndash;6 weeks</strong> from cut to all customer prods. Every step from merge to prod is human-assembled. No automated regression gate. Release notes drafted after the cut. Customer impact discovered post-deploy.</p>
+  </div>
+  <div class="pt-box pt-target">
+    <div class="lbl">Target</div>
+    <p>Continuous, feature-based delivery. <strong>Days</strong> from "Done" to live. Agents draft the manifest, notes, breaking-change diffs, and per-customer comms. Humans approve. CI gates block bad releases. Per-customer impact predicted before cut.</p>
+  </div>
+</div>
+
+<!-- PHASE FLOW -->
+<h2>Phase Flow</h2>
+<div class="phase-strip">
+  <div class="phase-tile">
+    <div class="pn">Phase 01</div>
+    <div class="pname">Foundation</div>
+    <div class="pdesc">Release Engineer Agent orchestrates the pipeline. Manifest, Jira linkage, testing agents, AI release notes &amp; comms drafts, three-tier release model, Comm SLA.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 02</div>
+    <div class="pname">Intelligence</div>
+    <div class="pdesc">Schema-diff &amp; breaking-change agent, customer impact + UAT scripts, deprecation runway, per-customer impact reports.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 03</div>
+    <div class="pname">Automation</div>
+    <div class="pdesc">CI gates, deployment orchestration, observability as a release gate.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 04</div>
+    <div class="pname">Closed Loop</div>
+    <div class="pdesc">Post-deploy correlation, rollback recommendation, deprecation auto-cleanup.</div>
+  </div>
+</div>
+
+<!-- TWO TRACKS -->
+<h2>Two Tracks</h2>
+<div class="tracks-band">
+  <div class="t">
+    <div class="lbl">ENG &middot; Engineering Track</div>
+    <p>Build and operate the agents, data plumbing, test infrastructure, and gates. <strong>Human-in-the-loop on agent outputs that govern code, tests, and release correctness.</strong></p>
+  </div>
+  <div class="t lead">
+    <div class="lbl">LEAD &middot; Leadership Track</div>
+    <p>Set policy, own customer-bound communication, govern the program, and measure outcomes. <strong>Human-in-the-loop on agent outputs that go to customers.</strong></p>
+  </div>
+</div>
+
+<!-- AGENT PIPELINE MAP -->
+<h2>Agent Pipeline Map</h2>
+<p style="margin-bottom: 8px;">When each agent fires &mdash; and where humans still have a task &mdash; from <strong>ticket pickup</strong> through <strong>customer prod</strong>. Humans approve, decide, and validate. Agents do the gathering and synthesis between the human steps.</p>
+
+<div class="ap-legend">
+  <span class="ap-leg gen">Generates</span>
+  <span class="ap-leg gate">Gates</span>
+  <span class="ap-leg monitor">Monitors</span>
+  <span class="ap-leg orch">Orchestrates</span>
+  <span class="ap-leg human">Human task</span>
+</div>
+
+<div class="ap-grid">
+
+  <!-- Stage headers -->
+  <div class="ap-header">
+    <div></div>
+    <div class="ap-stages">
+      <div class="ap-stage">Pickup</div>
+      <div class="ap-stage">Develop</div>
+      <div class="ap-stage">PR / CI</div>
+      <div class="ap-stage">Merge</div>
+      <div class="ap-stage">Cut</div>
+      <div class="ap-stage">RC Test</div>
+      <div class="ap-stage">Notes</div>
+      <div class="ap-stage">Cust DEV</div>
+      <div class="ap-stage">Cust QA</div>
+      <div class="ap-stage">Cust PROD</div>
+      <div class="ap-stage">Post-Deploy</div>
+    </div>
+  </div>
+
+  <!-- HUMAN GATES -->
+  <div class="ap-section-head">
+    <div class="ap-section-label">Human gates &middot; who acts, what they do</div>
+    <div class="ap-section-rule"></div>
+  </div>
+
+  <div class="ap-agent role-eng">
+    <div class="ap-name">Engineer</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 1;">scope + link</div>
+      <div class="ap-bar human" style="grid-column: 2;">code + tests</div>
+      <div class="ap-bar human" style="grid-column: 3;">open PR</div>
+      <div class="ap-bar human" style="grid-column: 4;">merge</div>
+      <div class="ap-bar human" style="grid-column: 8;">deploy</div>
+      <div class="ap-bar human" style="grid-column: 9;">deploy</div>
+      <div class="ap-bar human" style="grid-column: 10;">deploy</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-tech">
+    <div class="ap-name">Tech Lead / QA</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 3;">code review + diff</div>
+      <div class="ap-bar human" style="grid-column: 6;">RC sign-off</div>
+      <div class="ap-bar human" style="grid-column: 8;">validate</div>
+      <div class="ap-bar human" style="grid-column: 9;">validate</div>
+      <div class="ap-bar human" style="grid-column: 10;">validate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-lead">
+    <div class="ap-name">Delivery Lead</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 5;">scope + cut</div>
+      <div class="ap-bar human" style="grid-column: 7;">approve notes</div>
+      <div class="ap-bar human" style="grid-column: 8;">approve window</div>
+      <div class="ap-bar human" style="grid-column: 9;">approve promo</div>
+      <div class="ap-bar human" style="grid-column: 10;">approve promo</div>
+      <div class="ap-bar human" style="grid-column: 11;">approve rollback</div>
+    </div>
+  </div>
+
+  <div class="ap-agent role-cs">
+    <div class="ap-name">CIE &amp; Customer</div>
+    <div class="ap-track">
+      <div class="ap-bar human" style="grid-column: 7;">approve copy</div>
+      <div class="ap-bar human" style="grid-column: 8;">announce + review</div>
+      <div class="ap-bar human" style="grid-column: 9;">UAT</div>
+      <div class="ap-bar human" style="grid-column: 10;">PROD sign-off</div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="ap-section-head">
+    <div class="ap-section-label">Agents &middot; when each fires</div>
+    <div class="ap-section-rule"></div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-00</span> Release Engineer (orchestrator)</div>
+    <div class="ap-track">
+      <div class="ap-bar orch" style="grid-column: 1 / 12;">orch</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-10</span> Deprecation runway</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 1;">gen</div>
+      <div class="ap-bar gen" style="grid-column: 5;">gen</div>
+      <div class="ap-bar gen" style="grid-column: 7;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-06</span> Schema-diff &amp; breaking</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 2 / 4;">gen</div>
+      <div class="ap-bar gen" style="grid-column: 5;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-04</span> Testing agents</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 2 / 4;">gen</div>
+      <div class="ap-bar gate" style="grid-column: 4;">gate</div>
+      <div class="ap-bar gate" style="grid-column: 6;">gate</div>
+      <div class="ap-bar gate" style="grid-column: 8 / 11;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-02</span> MR &harr; Jira linkage</div>
+    <div class="ap-track">
+      <div class="ap-bar gate" style="grid-column: 3;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-08</span> Test coverage gap</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 3 / 6;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-11</span> Per-tier coverage gate</div>
+    <div class="ap-track">
+      <div class="ap-bar gate" style="grid-column: 3;">gate</div>
+      <div class="ap-bar gate" style="grid-column: 5 / 7;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-01</span> Release manifest</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 4 / 12;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-03</span> Customer impact map</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 5 / 8;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-05</span> AI release notes</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 5 / 8;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-18</span> Technical docs</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 4 / 8;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-19</span> How-to guides</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 7 / 10;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-09</span> Customer UAT scripts</div>
+    <div class="ap-track">
+      <div class="ap-bar gate" style="grid-column: 6;">gate</div>
+      <div class="ap-bar gate" style="grid-column: 8 / 11;">gate</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-13</span> SLOs &amp; alerts</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 6;">monitor</div>
+      <div class="ap-bar monitor" style="grid-column: 8 / 12;">monitor</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-07</span> Per-customer comms</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 7 / 11;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-12</span> Deployment calendar</div>
+    <div class="ap-track">
+      <div class="ap-bar orch" style="grid-column: 7 / 12;">orch</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-14</span> Post-deploy correlation</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 8 / 12;">monitor</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-15</span> Rollback recommendation</div>
+    <div class="ap-track">
+      <div class="ap-bar monitor" style="grid-column: 8 / 11;">monitor</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BACKLOG -->
+<h2>Initiative Backlog</h2>
+<p style="margin-bottom: 10px;">Items grouped by phase. Each phase builds on the previous &mdash; but engineering and leadership work in parallel <em>within</em> a phase. Priority is independent of phase: a "Critical" item in Phase 2 still ships before any "Medium" item in Phase 1.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 56px;">ID</th>
+      <th style="width: 70px;">Track</th>
+      <th style="width: 220px;">Initiative</th>
+      <th>Description &amp; Acceptance</th>
+      <th style="width: 80px;">Priority</th>
+      <th style="width: 90px;">Depends</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- PHASE 1 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 01 &mdash; Foundation</span> Orchestrator, data, policy. The floor everything else builds on. <span class="pmeta">Eng &times; Lead in parallel</span></td></tr>
+
+    <tr>
+      <td class="id">E-00</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Release Engineer Agent (orchestrator)</td>
+      <td>The conductor of the end-to-end pipeline. Listens to system events &mdash; MR merge, branch cut, CI green, RC sign-off, deploy complete, alert fired &mdash; and triggers the right downstream agent at the right step. Routes escalations to humans at the right gates. Maintains a single source of truth for where every release stands. Every other agent in this plan plugs into its event bus and reports state back.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">E-01</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Release manifest agent</td>
+      <td>Watches merged MRs and maintains a queryable manifest of what is in any release branch &mdash; MR ID, title, author, linked Jira, labels, merge date. Updated within minutes of merge.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">E-00</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-02</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">MR &harr; Jira linkage at CI</td>
+      <td>CI check blocks merge without a linked Jira issue. Weekly gap report for any pre-enforcement merges.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">E-03</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Customer-feature impact map</td>
+      <td>Curated YAML of which customers use which modules. Cross-references the manifest to produce per-customer impact summaries. Named owner, review cadence.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">E-01</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-04</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Testing agents (code &amp; skills)</td>
+      <td>Agents we build whose job is to (1)&nbsp;author new test scripts for every new feature, (2)&nbsp;update existing tests when code changes, (3)&nbsp;run the full suite to catch regressions. Coverage spans viax product code <em>and</em> the Claude skills we ship &mdash; any skill or code change re-validates both. Unblocks every gate in Phase 03 and replaces ad-hoc test maintenance.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">E-05</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">AI release notes (technical + functional)</td>
+      <td>Agent drafts technical notes (internal team + customer DevOps) and functional notes (business language for customers) from MR descriptions and Jira stories. Draft within 1 hour of branch cut. <strong>Lead-owned:</strong> Delivery + CIE approve customer-facing copy before any send.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">E-00</span><span class="dep">E-01</span><span class="dep">E-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-07</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Per-customer comms drafts</td>
+      <td>Agent generates customer-specific email/Slack drafts using the impact map &mdash; references only items that affect that customer. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">E-00</span><span class="dep">E-03</span><span class="dep">E-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-01</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Three-tier release model</td>
+      <td>Major / Minor / Hotfix formalized: branch, scope, customer comms, required testing per tier. Documented in Confluence.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-02</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Customer Communication SLA matrix</td>
+      <td>Owner + deadline + channel + minimum content per event (Major announce, DEV deploy, QA/PROD schedule, Hotfix, downtime). Confluence as system of record.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-03</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Definition of Done + Jira release-object policy</td>
+      <td>One DoD across CS / QA / Eng. Every code change to prod requires a linked Jira release object before deployment, with template. Jira automation flags gaps.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-04</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Environment usage policy</td>
+      <td>Palooza split from lab/lab2. Reset cadence + runbook. One-page Confluence policy reviewed quarterly.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-05</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Quarterly process health review</td>
+      <td>60-min ritual with Delivery / Eng / QA / CS leads. DORA dashboard from existing Jira + Grafana data. Output feeds the Discover board.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-11</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Optimize &amp; consolidate Jira boards</td>
+      <td>Audit existing Jira projects, boards, and workflows across Delivery / Eng / QA / CS. Consolidate to a documented set with consistent issue types, statuses, labels, and components. Eliminates the per-team Jira drift that currently breaks queries and dashboards &mdash; and is a precondition for the manifest, DoD, and release-object policy work landing cleanly.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+
+    <!-- PHASE 2 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 02 &mdash; Intelligence</span> Where customers feel the difference. <span class="pmeta">Depends on the manifest + impact map</span></td></tr>
+
+    <tr>
+      <td class="id">E-06</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Schema-diff &amp; breaking-change agent</td>
+      <td>Analyzes GraphQL schema changes, API changes, and configuration changes; flags breaking changes <em>pre-cut</em> with draft migration guidance per affected customer. False positive rate &lt; 30%.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-01</span><span class="dep">E-03</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-08</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Test coverage gap analysis</td>
+      <td>Cross-references the manifest against test suites and flags MRs that changed module X with no corresponding test changes. Severity tied to module criticality. Integrated into release readiness checklist.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-01</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-09</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Customer UAT scripts that travel</td>
+      <td>Every new implementation (Solventum, WileyAS-style) ships with automated UAT scripts covering that client's key flows. These become the regression baseline for that client on every future release.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-04</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-10</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Deprecation runway tracker</td>
+      <td>Tracks deprecation introduction date + 6-month removal-eligible date per item, plus client-usage signal. Auto-flags zero-usage candidates for cleanup releases.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-03</span><span class="dep">E-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-18</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Technical documentation agent</td>
+      <td>Agent generates and maintains technical reference docs from code, schema, and configuration changes &mdash; API reference, GraphQL schema, Determination Model and Configuration Model docs, internal architecture notes. Refreshes the internal docs site within hours of merge. Human review required only on customer-facing technical pages.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-00</span><span class="dep">E-01</span><span class="dep">E-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-06</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Per-customer impact reports as standard</td>
+      <td>Major release announcements include per-customer impact derived from E-03/E-06. Replaces the current generic "what's in this release" comms.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-07</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-07</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">AI showcase to customers + investors</td>
+      <td>Position the AI-orchestrated release pipeline as a customer- and investor-visible demonstration. Real examples, not slideware.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-05</span></td>
+    </tr>
+
+    <!-- PHASE 3 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 03 &mdash; Automation</span> Internal process gets significantly smoother. <span class="pmeta">Multiplier on Phase 1&ndash;2</span></td></tr>
+
+    <tr>
+      <td class="id">E-11</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Per-tier coverage baselines as CI gates</td>
+      <td>Hotfix = smoke. Minor = regression. Major = full + exploratory. "CI Green" check on the Jira release checklist &mdash; no release moves to QA Candidate without it.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-04</span><span class="dep">E-08</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-12</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Deployment calendar agent</td>
+      <td>Manages DEV &rarr; QA &rarr; PROD cadence per customer. Schedules, sends pre-deploy notifications, tracks validation windows, prompts for gate approval. Slack/Teams integrated.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-03</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-13</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">SLOs + proactive alerts + observability gate</td>
+      <td>SLOs for uptime, p95/p99 latency, GraphQL error rates, queue depth. Proactive Grafana alerts fire before customer Slack does. Observability becomes a formal QA gate before major releases reach prod.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">E-19</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">How-to guides agent</td>
+      <td>Agent generates customer-facing how-to guides for new features and changed flows. Sources: feature descriptions, UAT scripts, per-customer impact map. Drafts step-by-step tasks with referenced screens and pseudo-walkthroughs. CIE + Delivery review before publish to docs.viax.io.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-09</span><span class="dep">E-18</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-08</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Client migration runbook by deprecation</td>
+      <td>One deprecation at a time. Identify clients blocked, list specific items, assess complexity, provide targeted support. Runs as a tracked workstream, not an ad hoc ask.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-10</span></td>
+    </tr>
+    <tr>
+      <td class="id">L-09</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Advanced Logging product decision</td>
+      <td>Resolve the Wiley signal: tier observability as a paid feature, expand internal default, or productize a customer-facing observability surface. Decision documented and communicated.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-13</span></td>
+    </tr>
+
+    <!-- PHASE 4 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 04 &mdash; Closed Loop</span> Strategic. Closes the feedback cycle. <span class="pmeta">Highest leverage once Phases 1&ndash;3 are real</span></td></tr>
+
+    <tr>
+      <td class="id">E-14</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Post-deploy correlation</td>
+      <td>Watches logs, error rates, customer-reported issues after each deploy and correlates them back to specific release items. Alerts route to the responsible team.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-01</span><span class="dep">E-12</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-15</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Automated rollback recommendation</td>
+      <td>When thresholds are breached, agent recommends rollback with evidence (metrics, logs), affected release items, and customer impact. Human approves. Detection-to-recommendation latency &lt; 5 min.</td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td><span class="dep">E-14</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-16</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Deprecation auto-cleanup release</td>
+      <td>Recurring release dedicated to removing items that pass: 6 months old + zero customer usage + flagged green by E-10. Fast prep, fast rollout.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">E-10</span><span class="dep">L-08</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-17</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Agent operations: evals + drift</td>
+      <td>Every agent has a benchmark suite that runs on prompt or model changes. Output quality monitored over time. Named engineering owner per agent. "Agent on call" for production agent flows.</td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">L-10</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Continuous delivery posture</td>
+      <td>Feature-based small releases as the default cadence. "10 tiny releases / day" tracked in the DORA dashboard as the leading indicator. Process retrospective every quarter.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-11</span><span class="dep">E-13</span></td>
+    </tr>
+
+  </tbody>
+</table>
+
+<!-- OUTCOMES BY PHASE -->
+<h2>Outcomes by Phase</h2>
+<div class="outcomes">
+  <div class="outcome">
+    <div class="ph">Phase 01</div>
+    <p><strong>Single source of truth + customers feel it.</strong> Release Engineer Agent coordinates the pipeline. Notes auto-drafted in &lt;1h. Per-customer comms drafted from the impact map. Three-tier model and Comm SLA stop the per-cycle re-debate.</p>
+  </div>
+  <div class="outcome p2">
+    <div class="ph">Phase 02</div>
+    <p><strong>Customer-specific intelligence.</strong> Breaking changes flagged before the cut. Per-customer impact reports replace generic blasts. UAT scripts travel with every implementation.</p>
+  </div>
+  <div class="outcome p3">
+    <div class="ph">Phase 03</div>
+    <p><strong>Gates do the gating.</strong> CI Green is mandatory. Deployment cadence is automated. Observability alerts before customers do.</p>
+  </div>
+  <div class="outcome p4">
+    <div class="ph">Phase 04</div>
+    <p><strong>Closed loop.</strong> Post-deploy issues correlate to MRs. Rollback gets evidence. Deprecation cleanup runs on rails.</p>
+  </div>
+</div>
+
+<!-- PRINCIPLES -->
+<h2>Guiding Principles</h2>
+<div class="principles">
+  <div class="lbl">Non-negotiables</div>
+  <ul>
+    <li>The agent <strong>replaces data gathering</strong>, not human judgment.</li>
+    <li>Every <strong>customer-bound output</strong> has a leadership approval gate.</li>
+    <li>Every <strong>code-bound output</strong> has an engineering review.</li>
+    <li><strong>Phases are sequential</strong> at the macro level; in-phase work runs in parallel.</li>
+    <li>Priority is <strong>independent of phase</strong> &mdash; Critical items in Phase 2 ship before Medium items in Phase 1.</li>
+    <li>We don't gate any phase on <strong>perfection of the previous</strong>.</li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  <div>viax Release Pipeline 2026 &middot; v4 Action Plan &middot; Internal Draft</div>
+  <div>viax.io &middot; &copy; 2026</div>
+</div>
+
+</body>
+</html>
