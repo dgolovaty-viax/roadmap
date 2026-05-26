@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>viax Platform Simplification 2026 — v1 Action Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:        #F8F7F6;
+    --cream-dark:   #F2F1F0;
+    --white:        #FEFEFE;
+    --dark:         #1E1E1E;
+    --dark-alt:     #2A2A2A;
+    --gray-light:   #8A8A8A;
+    --gray-mid:     #525252;
+    --border:       #E2E0DC;
+
+    --mint:         #90E9B8;
+    --mint-dark:    #5ED49A;
+    --mint-text:    #177558;
+    --mint-soft:    #E8F8EE;
+
+    --lavender:     #C3BEF7;
+    --lavender-text:#4A3D9E;
+    --lavender-soft:#ECEAFB;
+    --peach:        #FCD0A1;
+    --peach-text:   #9B5B12;
+
+    --red:          #D9534F;
+    --red-soft:     #FCE8E6;
+
+    --font-display: "Funnel Sans", Inter, system-ui, sans-serif;
+    --font-mono:    "DM Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-display);
+    color: var(--dark);
+    background: var(--cream);
+    line-height: 1.55;
+    padding: 36px;
+    max-width: 1200px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { max-width: 820px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 500;
+    letter-spacing: -0.5px; line-height: 1.2;
+    color: var(--dark);
+  }
+  h1 span { color: var(--mint-dark); }
+  .header-sub {
+    font-size: 13.5px;
+    color: var(--gray-mid);
+    margin-top: 6px;
+    line-height: 1.55;
+  }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-right svg { display: block; margin-left: auto; }
+  .header-right .tag {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin-top: 6px;
+  }
+
+  /* SECTION HEADERS */
+  h2 {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin: 32px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--mint-dark);
+    display: inline-block;
+  }
+  h3 {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gray-light);
+    margin: 18px 0 8px 0;
+  }
+  p { font-size: 13.5px; color: var(--gray-mid); line-height: 1.6; }
+
+  /* PROBLEM / TARGET ROW */
+  .pt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .pt-box {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .pt-current { border-left: 3px solid var(--red); }
+  .pt-target  { border-left: 3px solid var(--mint-dark); }
+
+  .pt-box .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pt-current .lbl { color: var(--red); }
+  .pt-target  .lbl { color: var(--mint-text); }
+  .pt-box p { font-size: 13px; line-height: 1.55; color: var(--gray-mid); }
+  .pt-box p strong { color: var(--dark); font-weight: 600; }
+
+  /* PHASE FLOW STRIP */
+  .phase-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: 6px 0 4px 0;
+  }
+  .phase-tile {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 14px 16px 12px 16px;
+    position: relative;
+  }
+  .phase-tile:first-child { border-radius: 6px 0 0 6px; }
+  .phase-tile:last-child  { border-radius: 0 6px 6px 0; }
+  .phase-tile:not(:last-child) {
+    border-right: none;
+  }
+  .phase-tile:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -8px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--mint-dark);
+    z-index: 2;
+  }
+  .phase-tile .pn {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pname {
+    font-family: var(--font-display);
+    font-size: 14.5px; font-weight: 500;
+    letter-spacing: -0.2px;
+    color: var(--dark);
+    margin-bottom: 4px;
+  }
+  .phase-tile .pdesc {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+
+  /* TWO-TRACKS BAND */
+  .tracks-band {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .tracks-band .t {
+    padding-left: 12px;
+    border-left: 3px solid var(--mint-dark);
+  }
+  .tracks-band .t.devops {
+    border-left-color: var(--lavender);
+  }
+  .tracks-band .t .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .tracks-band .t.devops .lbl { color: var(--lavender-text); }
+  .tracks-band .t p {
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.55;
+  }
+  .tracks-band .t p strong { color: var(--dark); font-weight: 600; }
+
+  /* SIMPLIFICATION MAP */
+  .simp-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    gap: 0;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .simp-head {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+  }
+  .simp-row-label {
+    background: var(--cream-dark);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dark);
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+  }
+  .simp-cell {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--gray-mid);
+  }
+  .simp-cell.current {
+    border-left: 3px solid var(--red);
+    background: #fffdfc;
+  }
+  .simp-cell.target {
+    border-left: 3px solid var(--mint-dark);
+    background: var(--mint-soft);
+  }
+  .simp-cell strong { color: var(--dark); font-weight: 600; }
+
+  /* BACKLOG TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px 0;
+    font-size: 13px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  thead th {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 12px;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 12.5px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  tbody td.b-init { color: var(--dark); font-weight: 600; }
+  tbody tr:hover td { background: var(--mint-soft); }
+
+  tr.phase-row td {
+    background: var(--cream-dark) !important;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dark);
+    padding: 8px 12px;
+  }
+  tr.phase-row td .ptag {
+    color: var(--mint-text);
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  tr.phase-row td .pmeta {
+    color: var(--gray-light);
+    font-weight: 400;
+    margin-left: 8px;
+  }
+
+  .id { font-family: var(--font-mono); font-size: 11px; color: var(--gray-light); white-space: nowrap; }
+
+  /* OUTCOME ROW INSIDE DESCRIPTION CELL */
+  .outcome-line {
+    margin-top: 6px;
+    padding: 5px 8px;
+    background: var(--mint-soft);
+    border-left: 2px solid var(--mint-dark);
+    border-radius: 0 3px 3px 0;
+    font-size: 11.5px;
+    color: var(--mint-text);
+    line-height: 1.45;
+  }
+  .outcome-line .otag {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-right: 5px;
+  }
+  .outcome-line strong { color: var(--dark); font-weight: 600; }
+
+  /* TRACK CHIPS */
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .chip-arch    { background: var(--mint-soft); color: var(--mint-text); border: 1px solid var(--mint); }
+  .chip-devops  { background: var(--lavender-soft); color: var(--lavender-text); border: 1px solid var(--lavender); }
+
+  /* PRIORITY BADGES */
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .b-crit { background: #fee2e2; color: #991b1b; }
+  .b-high { background: #fef3c7; color: #92400e; }
+  .b-med  { background: #dbeafe; color: #1e40af; }
+  .b-fut  { background: #f3f4f6; color: #374151; }
+
+  .dep {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gray-light);
+    background: var(--cream-dark);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    margin-right: 3px;
+    white-space: nowrap;
+  }
+
+  /* OUTCOMES STRIP */
+  .outcomes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 10px 0 4px 0;
+  }
+  .outcome {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-top: 3px solid var(--mint-dark);
+    padding: 12px 14px;
+  }
+  .outcome.p2 { border-top-color: var(--lavender); }
+  .outcome.p3 { border-top-color: var(--peach); }
+  .outcome.p4 { border-top-color: var(--dark); }
+  .outcome .ph {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint-text);
+    margin-bottom: 4px;
+  }
+  .outcome.p2 .ph { color: var(--lavender-text); }
+  .outcome.p3 .ph { color: var(--peach-text); }
+  .outcome.p4 .ph { color: var(--dark); }
+  .outcome p {
+    font-size: 12px;
+    color: var(--gray-mid);
+    line-height: 1.5;
+  }
+  .outcome p strong { color: var(--dark); font-weight: 600; }
+
+  /* PRINCIPLES BAND */
+  .principles {
+    background: var(--dark);
+    color: var(--cream);
+    border-radius: 6px;
+    padding: 16px 22px;
+    margin-top: 8px;
+  }
+  .principles .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 8px;
+  }
+  .principles ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 18px;
+  }
+  .principles ul li {
+    font-size: 13px;
+    color: var(--cream);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .principles ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0; top: -2px;
+    color: var(--mint);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .principles ul li strong { color: var(--mint); font-weight: 500; }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--gray-light);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Platform Simplification &middot; 2026 Action Plan &middot; v1</div>
+    <h1>From platform sprawl to <span>one surface that scales for agents and customers.</span></h1>
+    <div class="header-sub">Three schemas become one. Four services consolidate into bcore. Datomic gets cached and re-homed. New clients onboard in hours, not weeks. Documentation becomes agent-grade. Two tracks &mdash; Architecture owns the API surface; DevOps owns the runtime &mdash; working in rough priority order across four phases.</div>
+  </div>
+  <div class="header-right">
+    <svg width="100" height="26" viewBox="0 0 285 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="viax">
+      <path d="M258.095 74C242.927 74 232.079 64.6667 232.079 47.7143C232.079 30.0953 242.927 21.5238 258.095 21.5238C273.359 21.5238 284.207 30.0953 284.207 47.7143C284.207 64.6667 273.359 74 258.095 74ZM258.095 63.0476C266.351 63.0476 272.207 57.5238 272.207 47.8095C272.207 37.7143 266.351 32.5715 258.095 32.5715C249.935 32.5715 244.079 37.7143 244.079 47.8095C244.079 57.5238 249.935 63.0476 258.095 63.0476Z" fill="#1E1E1E"/>
+      <path d="M212.084 72.8571V22.6667H224.948V72.8571H212.084ZM211.028 0H226.004V13.2381H211.028V0Z" fill="#1E1E1E"/>
+      <path d="M189.174 59.5237H203.19V72.857H189.174V59.5237Z" fill="#1E1E1E"/>
+      <path d="M100.267 74C85.9627 74 75.5947 64.7619 75.5947 47.8095C75.5947 30.1905 85.9627 21.5238 100.267 21.5238C108.331 21.5238 114.667 24.5715 118.507 30.4762L119.659 22.6667H128.683V72.8572H119.467L118.411 65.0476C114.571 70.8572 108.331 74 100.267 74ZM101.611 63.0476C109.867 63.0476 115.723 57.5238 115.723 47.8095C115.723 37.7143 109.867 32.5715 101.611 32.5715C93.4507 32.5715 87.5947 37.7143 87.5947 47.8095C87.5947 57.5238 93.4507 63.0476 101.611 63.0476Z" fill="#1E1E1E"/>
+      <path d="M55.6004 72.8571V22.6667H68.4644V72.8571H55.6004ZM54.5444 0H69.5204V13.2381H54.5444V0Z" fill="#1E1E1E"/>
+      <path d="M18.336 72.8571L0 30.9523V22.6666H9.984L24.96 61.0475L39.648 22.6666H49.536V30.9523L31.296 72.8571H18.336Z" fill="#1E1E1E"/>
+      <path d="M158.755 57.8916L147.656 72.9756H137V63.0879L149.21 48.3457L158.755 57.8916ZM181.064 63.0879V72.9756H170.12L159.23 58.1768L168.898 48.5088L181.064 63.0879ZM158.622 36.5127L148.93 46.2051L137 31.8877V22H148.136L158.622 36.5127ZM181.064 31.8877L169.18 46.043L159.367 36.2314L169.928 22H181.064V31.8877Z" fill="#5ED49A"/>
+    </svg>
+    <div class="tag">v1 &middot; May 2026</div>
+  </div>
+</div>
+
+<!-- PROBLEM / TARGET -->
+<h2>Problem &amp; Target</h2>
+<div class="pt-row">
+  <div class="pt-box pt-current">
+    <div class="lbl">Today</div>
+    <p>Three GraphQL schemas (stable / incubating / experimental) and Schema Stitching make the API hard for humans <em>and</em> agents to reason about. AMS, Reporting, Indexer, and bcore live as separate services with overlapping logic. Datomic runs on PostgreSQL with no caching layer and oversized databases. Each realm gets its own k8s cluster. Onboarding a new client is a multi-week manual ramp. Errors are cryptic. Docs aren't built for retrieval.</p>
+  </div>
+  <div class="pt-box pt-target">
+    <div class="lbl">Target</div>
+    <p>One unified schema with clear naming and self-descriptive errors. Schema Stitching gone. AMS, Reporting, and Indexer absorbed into bcore. Datomic on <strong>Cassandra</strong> with <strong>Memcache</strong> in front, smaller DBs, history offloaded to the warehouse. Single k8s cluster, namespace per realm, shared multi-realm services. <strong>Automated provisioning</strong> spins up a new client in hours. Agent-grade documentation feeds RAG cleanly.</p>
+  </div>
+</div>
+
+<!-- PHASE FLOW -->
+<h2>Phase Flow</h2>
+<div class="phase-strip">
+  <div class="phase-tile">
+    <div class="pn">Phase 01</div>
+    <div class="pname">Standardize &amp; Document</div>
+    <div class="pdesc">Naming conventions, error model, agent-grade docs, @fulltext deprecation finalized, migration approach standard. The foundation everything else builds on.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 02</div>
+    <div class="pname">API Simplification</div>
+    <div class="pdesc">Three schemas collapse to one. Schema Stitching removed. Query complexity gate. Attributes history reverted. Functions templates leave the API.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 03</div>
+    <div class="pname">Service Consolidation</div>
+    <div class="pdesc">AMS + Reporting + Indexer absorbed into bcore. Multi-realm shared services. Single cluster + namespace per realm. Datomic DBs shrunk.</div>
+  </div>
+  <div class="phase-tile">
+    <div class="pn">Phase 04</div>
+    <div class="pname">Scale Infrastructure</div>
+    <div class="pdesc">Automated client provisioning. Memcache + Cassandra under Datomic. History to warehouse. Argo Workflows. Keycloak alternatives evaluated.</div>
+  </div>
+</div>
+
+<!-- TWO TRACKS -->
+<h2>Two Tracks</h2>
+<div class="tracks-band">
+  <div class="t">
+    <div class="lbl">ARCH &middot; Architecture Track</div>
+    <p>Owns the API surface and service shape. Schema unification, naming, error model, Schema Stitching removal, service consolidation into bcore, documentation, query complexity. <strong>The track agents see.</strong></p>
+  </div>
+  <div class="t devops">
+    <div class="lbl">DEVOPS &middot; DevOps Track</div>
+    <p>Owns the runtime, data layer, and provisioning. Datomic re-platforming, Memcache, cluster topology, CI/CD migration, identity provider evaluation, automated client onboarding. <strong>The track customers feel at scale.</strong></p>
+  </div>
+</div>
+
+<!-- SIMPLIFICATION MAP -->
+<h2>Simplification Map</h2>
+<p style="margin-bottom: 10px;">By subsystem &mdash; what each layer looks like <strong>today</strong> versus where this plan lands it.</p>
+
+<div class="simp-grid">
+  <div class="simp-head">Subsystem</div>
+  <div class="simp-head">Today</div>
+  <div class="simp-head">Target</div>
+
+  <div class="simp-row-label">API Surface</div>
+  <div class="simp-cell current">3 GraphQL schemas (stable / incubating / experimental), Schema Stitching, inconsistent type/field naming, heavy unbounded queries, cryptic errors.</div>
+  <div class="simp-cell target"><strong>One unified schema</strong>, no stitching, agreed naming conventions (VX-1448), query complexity gate, self-descriptive errors.</div>
+
+  <div class="simp-row-label">Services</div>
+  <div class="simp-cell current">AMS, Reporting, Indexer, bcore as separate services; duplicated logic; some logic per-realm.</div>
+  <div class="simp-cell target"><strong>bcore consolidated</strong>: AMS + Reporting merged in; Indexer's schema part absorbed; multi-realm shared services.</div>
+
+  <div class="simp-row-label">Data</div>
+  <div class="simp-cell current">Datomic on PostgreSQL, no caching, oversized DBs, history tightly coupled to live data, @fulltext attribute still present.</div>
+  <div class="simp-cell target"><strong>Datomic on Cassandra</strong> with Memcache, smaller DBs, history offloaded to warehouse, @fulltext fully removed, attributes history logic reverted.</div>
+
+  <div class="simp-row-label">Infra</div>
+  <div class="simp-cell current">Multi-cluster k8s (one per realm), Tekton + GitLab CI, Keycloak, ad-hoc migrations, functions templates served from API.</div>
+  <div class="simp-cell target"><strong>Single k8s cluster + NS per realm</strong>, Argo Workflows, evaluated identity provider, standardized migration approach, functions templates from GitHub.</div>
+
+  <div class="simp-row-label">Onboarding</div>
+  <div class="simp-cell current">Manual provisioning per new client; multi-week ramp; bespoke per-realm setup.</div>
+  <div class="simp-cell target"><strong>Fully automated provisioning pipeline</strong>; new client live in hours; reproducible per-realm setup.</div>
+
+  <div class="simp-row-label">Documentation</div>
+  <div class="simp-cell current">Uneven, scattered, written for humans skimming &mdash; not for agents retrieving.</div>
+  <div class="simp-cell target"><strong>Agent-grade docs</strong>: structured, versioned, RAG-ready, with examples per schema concept.</div>
+</div>
+
+<!-- BACKLOG -->
+<h2>Initiative Backlog</h2>
+<p style="margin-bottom: 10px;">Items grouped by phase. Each phase builds on the previous &mdash; but Architecture and DevOps work in parallel <em>within</em> a phase. Priority is independent of phase: a "Critical" item in Phase 2 still ships before any "Medium" item in Phase 1. Every item includes its <strong>potential outcome</strong> &mdash; the win, not just the work.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 56px;">ID</th>
+      <th style="width: 78px;">Track</th>
+      <th style="width: 220px;">Initiative</th>
+      <th>Description &amp; Outcome</th>
+      <th style="width: 80px;">Priority</th>
+      <th style="width: 90px;">Depends</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- PHASE 1 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 01 &mdash; Standardize &amp; Document</span> The foundation everything else builds on. <span class="pmeta">Arch &times; DevOps in parallel</span></td></tr>
+
+    <tr>
+      <td class="id">A-01</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">GraphQL naming conventions for types, fields &amp; interfaces</td>
+      <td>Agree and codify naming for types, fields, and interface declaration rules across the schema (per <a href="https://viax.atlassian.net/browse/VX-1448" style="color: var(--mint-text);">VX-1448</a>). Lint rule that fails CI on violations. Pre-req for unifying the three schemas.
+        <div class="outcome-line"><span class="otag">Outcome</span> Agents and humans can <strong>predict field names</strong> without reading the schema. Cuts onboarding-to-API time and slashes one class of integration bugs.</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">A-02</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Self-descriptive error model</td>
+      <td>Standard error envelope across all services: stable error code, human-readable message, structured context (which field, which value, which constraint), and a remediation hint. Replace the current cryptic errors.
+        <div class="outcome-line"><span class="otag">Outcome</span> Customers and agents <strong>fix problems without filing tickets</strong>. Direct lever on support volume and agent autonomy in the support pipeline.</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">A-03</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Agent-grade documentation overhaul</td>
+      <td>Restructure viax documentation for retrieval: stable URLs, structured headings, one concept per page, code-level examples per schema type, versioned. Feeds the support KB agent (S-07) and any customer-side AI integration.
+        <div class="outcome-line"><span class="otag">Outcome</span> RAG retrieves <strong>the right answer on the first call</strong>. Compounds with every agent that touches viax (ours and customers').</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">A-04</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Finalize @fulltext attribute deprecation</td>
+      <td>Complete the in-flight deprecation: remove the attribute from the schema, migrate any remaining usage, delete the supporting code path. Unblocks schema unification.
+        <div class="outcome-line"><span class="otag">Outcome</span> One less legacy hazard. Removes a class of "why is this field special?" support tickets and shrinks the surface area for A-05.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="id">D-01</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Customer config self-service via better errors</td>
+      <td>Surface configuration errors and validation failures with enough context that the customer can correct them without engineering involvement. Builds on A-02's error envelope. Self-serve config validation tool.
+        <div class="outcome-line"><span class="otag">Outcome</span> Cuts the "config-help" support category. Customers move faster; CS team's time goes to higher-value work.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-02</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Migration approach standard</td>
+      <td>Codify how we do schema and data migrations across services: tooling, sequencing, rollback criteria, customer comms, observability. Replaces the current ad-hoc per-team approach.
+        <div class="outcome-line"><span class="otag">Outcome</span> Migrations stop being a coin-flip. Pre-req for the Datomic re-platforming and any future structural change.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
+    </tr>
+
+    <!-- PHASE 2 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 02 &mdash; API Simplification</span> The agent-visible surface. <span class="pmeta">Depends on Phase 01 standards</span></td></tr>
+
+    <tr>
+      <td class="id">A-05</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Unify 3 schemas (stable / incubating / experimental) into 1</td>
+      <td>One schema with a lifecycle attribute per type/field (e.g., @stable / @experimental). Customers and agents query one endpoint with one mental model. Migration plan per customer.
+        <div class="outcome-line"><span class="otag">Outcome</span> The biggest agent-readability win in the plan. <strong>One endpoint, one mental model</strong> &mdash; no more "which schema do I hit?" branching.</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">A-01</span><span class="dep">A-04</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-06</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Remove Schema Stitching</td>
+      <td>Replace stitching with native composition in the unified schema. Eliminates a layer of cross-service runtime complexity and a class of debugging pain.
+        <div class="outcome-line"><span class="otag">Outcome</span> Faster queries, simpler debugging, fewer "the stitching layer ate my error" tickets. Unblocks bcore consolidation.</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">A-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-07</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Query complexity analysis &amp; rejection</td>
+      <td>Compute query cost before execution; reject queries above a per-tier budget with a clear error pointing to the offending fragment. Protects the platform from accidental and adversarial heavy queries.
+        <div class="outcome-line"><span class="otag">Outcome</span> Tail-latency stays predictable as customers (and their agents) experiment. Removes one of the biggest "noisy neighbor" risks.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-08</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Revert attributes history logic in Schema &amp; Datomic</td>
+      <td>Undo the attributes-history coupling that's adding query overhead and Datomic complexity. Pre-req for shrinking Datomic DBs and offloading history.
+        <div class="outcome-line"><span class="otag">Outcome</span> Simpler schema; smaller Datomic footprint; clears the path to D-05 and D-08.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">D-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-03</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Move functions templates from API to GitHub</td>
+      <td>Function templates ship as a GitHub-hosted artifact, versioned and reviewable, instead of being downloaded through the API.
+        <div class="outcome-line"><span class="otag">Outcome</span> Customers get version control and PR review for free; one less endpoint to maintain; templates become discoverable.</div>
+      </td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">A-02</span></td>
+    </tr>
+
+    <!-- PHASE 3 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 03 &mdash; Service Consolidation</span> Eliminate fragmentation. <span class="pmeta">Builds on the unified schema</span></td></tr>
+
+    <tr>
+      <td class="id">A-09</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Merge AMS &amp; Reporting into bcore</td>
+      <td>Absorb AMS and Reporting service responsibilities into bcore. Single deployable, shared models, no cross-service stitching for read paths.
+        <div class="outcome-line"><span class="otag">Outcome</span> Fewer moving parts in prod. Less integration code. Faster reads via in-process joins instead of network hops.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-05</span><span class="dep">A-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-10</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Absorb Indexer schema into bcore; cut Indexer from Datomic</td>
+      <td>Move the schema-relevant portion of Indexer into bcore; sever Indexer's Datomic dependency. Indexer either becomes a thin transformation layer or goes away entirely.
+        <div class="outcome-line"><span class="otag">Outcome</span> One less service touching Datomic. Cleaner ownership boundary. Eliminates a coordination point on every schema change.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-05</span><span class="dep">A-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-11</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">SOA: multi-realm shared services</td>
+      <td>Identify services that don't need to be per-realm (e.g., auth, function execution, certain platform utilities) and run them as shared multi-realm services.
+        <div class="outcome-line"><span class="otag">Outcome</span> Linear cost-per-realm becomes sub-linear. Enables the automated-provisioning play (A-12).</div>
+      </td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">A-09</span><span class="dep">A-10</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-04</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Single k8s cluster, namespace per realm</td>
+      <td>Collapse per-realm clusters into a single cluster with namespace-per-realm isolation. Standardize RBAC, network policy, and quota per NS.
+        <div class="outcome-line"><span class="otag">Outcome</span> One control plane. Lower fixed cost per realm. Faster realm spin-up. Pre-req for automated provisioning.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">D-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-05</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Reduce Datomic database sizes</td>
+      <td>Audit and shrink each customer Datomic DB: prune obsolete data, compact, archive cold data per L-08-style policy. Targets faster cold-start, less cache pressure.
+        <div class="outcome-line"><span class="otag">Outcome</span> Lower storage cost, faster queries, smaller blast radius per incident. Makes Cassandra migration tractable.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-08</span></td>
+    </tr>
+
+    <!-- PHASE 4 -->
+    <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 04 &mdash; Scale Infrastructure</span> Performance, identity, automation. <span class="pmeta">Highest leverage once Phases 1&ndash;3 are real</span></td></tr>
+
+    <tr>
+      <td class="id">A-12</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Automated new customer provisioning</td>
+      <td>End-to-end pipeline: customer signs up &rarr; namespace, Datomic DB, schema, default config, auth provisioned automatically. No engineering ticket on the path. Builds on D-04 (single cluster + NS) and A-11 (shared services).
+        <div class="outcome-line"><span class="otag">Outcome</span> <strong>Onboard a new client in hours, not weeks.</strong> Directly unlocks the "scale new clients" goal. Sales can sell faster; engineering stops being the bottleneck.</div>
+      </td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">D-04</span><span class="dep">A-11</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-06</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Memcache in front of Datomic</td>
+      <td>Add a Memcache layer for hot reads. Cache invalidation tied to Datomic transactor events. Measurable hit-rate target per workload.
+        <div class="outcome-line"><span class="otag">Outcome</span> Read-heavy workloads drop in p95 latency. Buys headroom while D-07 (Cassandra) lands.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">D-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-07</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Migrate Datomic storage: PostgreSQL &rarr; Cassandra</td>
+      <td>Re-platform Datomic's underlying storage from PostgreSQL to Cassandra. Per-customer cutover plan with rollback. Validate with D-05's shrunken DBs first.
+        <div class="outcome-line"><span class="otag">Outcome</span> Horizontal scalability for the data layer. Removes the PostgreSQL ceiling that bounds how many realms one cluster can hold.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">D-02</span><span class="dep">D-05</span><span class="dep">D-06</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-08</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Move Datomic history to data warehouse</td>
+      <td>Offload historical/audit data from Datomic into the warehouse, keeping Datomic focused on current-state queries. <em>Note: flagged on the mind map as "does not look like simplification" &mdash; do the analysis before committing.</em>
+        <div class="outcome-line"><span class="otag">Outcome</span> <em>If</em> analysis confirms: smaller Datomic, faster queries, history queryable from BI tools. <em>If not</em>: defer or descope.</div>
+      </td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">A-08</span><span class="dep">D-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-09</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Migrate Tekton + GitLab CI to Argo Workflows</td>
+      <td>Consolidate CI/CD onto Argo Workflows. Standard workflow templates per service type. Retire Tekton and GitLab CI pipelines on a per-repo cadence.
+        <div class="outcome-line"><span class="otag">Outcome</span> One CI/CD substrate, one set of templates, one place to debug. Reduces tool sprawl in the build path.</div>
+      </td>
+      <td><span class="badge b-med">Medium</span></td>
+      <td><span class="dep">D-02</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-10</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Evaluate simpler k8s alternative</td>
+      <td>Research and prototype: do we still need full k8s, or can a simpler runtime (Nomad, ECS, Fly, etc.) carry the workload now that D-04 has flattened the cluster topology? Decision documented either way.
+        <div class="outcome-line"><span class="otag">Outcome</span> Either confirms k8s is the right floor (and we stop second-guessing it), or finds a 10x simpler runtime that cuts operational burden.</div>
+      </td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td><span class="dep">D-04</span></td>
+    </tr>
+    <tr>
+      <td class="id">D-11</td>
+      <td><span class="chip chip-devops">DevOps</span></td>
+      <td class="b-init">Evaluate Zitadel / Kratos vs Keycloak</td>
+      <td>Research: do Zitadel or Ory Kratos meet our identity requirements with less operational overhead than Keycloak? Decision doc with migration cost estimate either way.
+        <div class="outcome-line"><span class="otag">Outcome</span> Either justifies sticking with Keycloak (closing the question), or unlocks a lighter identity layer that's easier to operate at multi-realm scale.</div>
+      </td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td>&mdash;</td>
+    </tr>
+
+  </tbody>
+</table>
+
+<!-- OUTCOMES BY PHASE -->
+<h2>Outcomes by Phase</h2>
+<div class="outcomes">
+  <div class="outcome">
+    <div class="ph">Phase 01</div>
+    <p><strong>The contract is written.</strong> Naming, errors, and docs become predictable. Agents (ours and customers') can reason about the platform. CI lints the rules. Migration work has a standard playbook.</p>
+  </div>
+  <div class="outcome p2">
+    <div class="ph">Phase 02</div>
+    <p><strong>One API to integrate against.</strong> Three schemas become one. Schema Stitching disappears. Heavy queries get blocked at the gate. Functions templates leave the API. The surface customers touch is dramatically smaller.</p>
+  </div>
+  <div class="outcome p3">
+    <div class="ph">Phase 03</div>
+    <p><strong>The platform stops being a constellation.</strong> bcore swallows AMS, Reporting, and Indexer's schema. Multi-realm services exist. One cluster, namespace per realm. Datomic gets right-sized.</p>
+  </div>
+  <div class="outcome p4">
+    <div class="ph">Phase 04</div>
+    <p><strong>Scale becomes a sales lever.</strong> A new client lands in hours. Datomic on Cassandra removes the PG ceiling. Memcache absorbs read spikes. CI/CD and identity are evaluated honestly, not by inertia.</p>
+  </div>
+</div>
+
+<!-- PRINCIPLES -->
+<h2>Guiding Principles</h2>
+<div class="principles">
+  <div class="lbl">Non-negotiables</div>
+  <ul>
+    <li><strong>One mental model per surface</strong> &mdash; if a customer or agent has to branch on "which schema / which service / which cluster", we haven't simplified yet.</li>
+    <li><strong>Errors are a feature</strong>, not a leftover &mdash; structured, actionable, surfaced.</li>
+    <li><strong>Documentation is built for retrieval</strong>, not for skimming &mdash; agent-grade or it doesn't ship.</li>
+    <li><strong>Every migration has a rollback</strong> and a per-customer cutover plan.</li>
+    <li><strong>Simplicity wins ties</strong> &mdash; if two designs are close, the one with fewer moving parts wins, even if the other is marginally faster.</li>
+    <li><strong>Phases are sequential</strong> at the macro; in-phase work runs in parallel.</li>
+    <li><strong>Priority is independent of phase</strong> &mdash; Critical in Phase 2 ships before Medium in Phase 1.</li>
+    <li><strong>"Future" items get a decision, not a runway</strong> &mdash; we either commit or close them out, no permanent maybe.</li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  <div>viax Platform Simplification 2026 &middot; v1 Action Plan &middot; Internal Draft</div>
+  <div>viax.io &middot; &copy; 2026</div>
+</div>
+
+</body>
+</html>

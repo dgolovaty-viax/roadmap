@@ -9,6 +9,7 @@ import IdeaVotePage from '@/pages/IdeaVotePage'
 import FormaOnePagerPage from '@/pages/FormaOnePagerPage'
 import ReleasePipelinePage from '@/pages/ReleasePipelinePage'
 import SupportPipelinePage from '@/pages/SupportPipelinePage'
+import SimplificationPage from '@/pages/SimplificationPage'
 import SupportPage from '@/pages/SupportPage'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/forma-one-pager" element={<FormaOnePagerPage />} />
             <Route path="/release-pipeline" element={<ReleasePipelinePage />} />
             <Route path="/support-pipeline" element={<SupportPipelinePage />} />
+            <Route path="/simplification" element={<SimplificationPage />} />
             <Route path="/planning" element={<PlanningPage />} />
             <Route path="/planning/epics/:epicId" element={<PlanningPage />} />
             <Route path="/planning/session/:sessionId" element={<SessionPage />} />

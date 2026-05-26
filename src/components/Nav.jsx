@@ -52,6 +52,9 @@ export default function Nav() {
         <NavLink to="/support-pipeline" className={navLinkClass}>
           AI-Augmented Support
         </NavLink>
+        <NavLink to="/simplification" className={navLinkClass}>
+          Simplification and Scaling
+        </NavLink>
         <NavLink to="/planning" className={navLinkClass}>
           Planning
         </NavLink>
