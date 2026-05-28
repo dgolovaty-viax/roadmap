@@ -494,11 +494,11 @@
 <div class="pt-row">
   <div class="pt-box pt-current">
     <div class="lbl">Today</div>
-    <p>Three GraphQL schemas (stable / incubating / experimental) and Schema Stitching make the API hard for humans <em>and</em> agents to reason about. AMS, Reporting, Indexer, and bcore live as separate services with overlapping logic. Datomic runs on PostgreSQL with no caching layer and oversized databases. Each realm gets its own k8s cluster. Onboarding a new client is a multi-week manual ramp. Errors are cryptic. Docs aren't built for retrieval.</p>
+    <p>Three GraphQL schemas (stable / incubating / experimental) make the API hard for humans <em>and</em> agents to reason about. AMS, Reporting, Indexer, and bcore live as separate services with overlapping logic. Datomic runs on PostgreSQL with no caching layer and oversized databases. Each realm gets its own k8s cluster. Onboarding a new client is a multi-week manual ramp. Errors are cryptic. Docs aren't built for retrieval.</p>
   </div>
   <div class="pt-box pt-target">
     <div class="lbl">Target</div>
-    <p>One unified schema with clear naming and self-descriptive errors. Schema Stitching gone. AMS, Reporting, and Indexer absorbed into bcore. Datomic on <strong>Cassandra</strong> with <strong>Memcache</strong> in front, smaller DBs, history offloaded to the warehouse. Single k8s cluster, namespace per realm, shared multi-realm services. <strong>Automated provisioning</strong> spins up a new client in hours. Agent-grade documentation feeds RAG cleanly.</p>
+    <p>One unified schema with clear naming and self-descriptive errors. AMS, Reporting, and Indexer absorbed into bcore. Datomic on <strong>Cassandra</strong> with <strong>Memcache</strong> in front, smaller DBs, history offloaded to the warehouse. Single k8s cluster, namespace per realm, shared multi-realm services. <strong>Automated provisioning</strong> spins up a new client in hours. Agent-grade documentation feeds RAG cleanly.</p>
   </div>
 </div>
 
@@ -513,7 +513,7 @@
   <div class="phase-tile">
     <div class="pn">Phase 02</div>
     <div class="pname">API Simplification</div>
-    <div class="pdesc">Three schemas collapse to one. Schema Stitching removed. Query complexity gate. Attributes history reverted. Functions templates leave the API.</div>
+    <div class="pdesc">Three schemas collapse to one. Query complexity gate. Attributes history reverted. Functions templates leave the API.</div>
   </div>
   <div class="phase-tile">
     <div class="pn">Phase 03</div>
@@ -532,7 +532,7 @@
 <div class="tracks-band">
   <div class="t">
     <div class="lbl">ARCH &middot; Architecture Track</div>
-    <p>Owns the API surface and service shape. Schema unification, naming, error model, Schema Stitching removal, service consolidation into bcore, documentation, query complexity. <strong>The track agents see.</strong></p>
+    <p>Owns the API surface and service shape. Schema unification, naming, error model, service consolidation into bcore, documentation, query complexity. <strong>The track agents see.</strong></p>
   </div>
   <div class="t devops">
     <div class="lbl">DEVOPS &middot; DevOps Track</div>
@@ -550,8 +550,8 @@
   <div class="simp-head">Target</div>
 
   <div class="simp-row-label">API Surface</div>
-  <div class="simp-cell current">3 GraphQL schemas (stable / incubating / experimental), Schema Stitching, inconsistent type/field naming, heavy unbounded queries, cryptic errors.</div>
-  <div class="simp-cell target"><strong>One unified schema</strong>, no stitching, agreed naming conventions (VX-1448), query complexity gate, self-descriptive errors.</div>
+  <div class="simp-cell current">3 GraphQL schemas (stable / incubating / experimental), inconsistent type/field naming, heavy unbounded queries, cryptic errors.</div>
+  <div class="simp-cell target"><strong>One unified schema</strong>, agreed naming conventions (VX-1448), query complexity gate, self-descriptive errors.</div>
 
   <div class="simp-row-label">Services</div>
   <div class="simp-cell current">AMS, Reporting, Indexer, bcore as separate services; duplicated logic; some logic per-realm.</div>
@@ -669,16 +669,6 @@
       <td><span class="dep">A-01</span><span class="dep">A-04</span></td>
     </tr>
     <tr>
-      <td class="id">A-06</td>
-      <td><span class="chip chip-arch">Arch</span></td>
-      <td class="b-init">Remove Schema Stitching</td>
-      <td>Replace stitching with native composition in the unified schema. Eliminates a layer of cross-service runtime complexity and a class of debugging pain.
-        <div class="outcome-line"><span class="otag">Outcome</span> Faster queries, simpler debugging, fewer "the stitching layer ate my error" tickets. Unblocks bcore consolidation.</div>
-      </td>
-      <td><span class="badge b-crit">Critical</span></td>
-      <td><span class="dep">A-05</span></td>
-    </tr>
-    <tr>
       <td class="id">A-07</td>
       <td><span class="chip chip-arch">Arch</span></td>
       <td class="b-init">Query complexity analysis &amp; rejection</td>
@@ -716,11 +706,11 @@
       <td class="id">A-09</td>
       <td><span class="chip chip-arch">Arch</span></td>
       <td class="b-init">Merge AMS &amp; Reporting into bcore</td>
-      <td>Absorb AMS and Reporting service responsibilities into bcore. Single deployable, shared models, no cross-service stitching for read paths.
+      <td>Absorb AMS and Reporting service responsibilities into bcore. Single deployable, shared models, in-process joins instead of network hops for read paths.
         <div class="outcome-line"><span class="otag">Outcome</span> Fewer moving parts in prod. Less integration code. Faster reads via in-process joins instead of network hops.</div>
       </td>
       <td><span class="badge b-high">High</span></td>
-      <td><span class="dep">A-05</span><span class="dep">A-06</span></td>
+      <td><span class="dep">A-05</span></td>
     </tr>
     <tr>
       <td class="id">A-10</td>
@@ -730,7 +720,7 @@
         <div class="outcome-line"><span class="otag">Outcome</span> One less service touching Datomic. Cleaner ownership boundary. Eliminates a coordination point on every schema change.</div>
       </td>
       <td><span class="badge b-high">High</span></td>
-      <td><span class="dep">A-05</span><span class="dep">A-06</span></td>
+      <td><span class="dep">A-05</span></td>
     </tr>
     <tr>
       <td class="id">A-11</td>
@@ -761,6 +751,16 @@
       </td>
       <td><span class="badge b-high">High</span></td>
       <td><span class="dep">A-08</span></td>
+    </tr>
+    <tr>
+      <td class="id">A-06</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Remove Schema Stitching</td>
+      <td>Replace stitching with native composition in the unified schema. Eliminates a layer of cross-service runtime complexity and a class of debugging pain.
+        <div class="outcome-line"><span class="otag">Outcome</span> Final API surface cleanup after bcore consolidation lands &mdash; faster queries, simpler debugging, fewer "the stitching layer ate my error" tickets.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-05</span><span class="dep">A-09</span><span class="dep">A-10</span></td>
     </tr>
 
     <!-- PHASE 4 -->
@@ -849,7 +849,7 @@
   </div>
   <div class="outcome p2">
     <div class="ph">Phase 02</div>
-    <p><strong>One API to integrate against.</strong> Three schemas become one. Schema Stitching disappears. Heavy queries get blocked at the gate. Functions templates leave the API. The surface customers touch is dramatically smaller.</p>
+    <p><strong>One API to integrate against.</strong> Three schemas become one. Heavy queries get blocked at the gate. Functions templates leave the API. The surface customers touch is dramatically smaller.</p>
   </div>
   <div class="outcome p3">
     <div class="ph">Phase 03</div>
