@@ -1150,6 +1150,12 @@
   </div>
 </div>
 
+<!-- SOC COMPLIANCE OUTCOME -->
+<div class="outcome p3" style="margin-top: 10px; border-top-width: 3px;">
+  <div class="ph">SOC Compliance &middot; baked in, not bolted on</div>
+  <p>Every agent action produces SOC-evidence by default &mdash; <strong>actor, input, output, approver, timestamp, target system</strong> &mdash; in an immutable audit log per release. MR&harr;Jira linkage, schema diffs, CI gate results, and post-deploy decisions all become first-class audit records. Compliance stops being a quarterly scramble and becomes a side effect of the process.</p>
+</div>
+
 <!-- PRINCIPLES -->
 <h2>Guiding Principles</h2>
 <div class="principles">
@@ -1158,6 +1164,9 @@
     <li>The agent <strong>replaces data gathering</strong>, not human judgment.</li>
     <li>Every <strong>customer-bound output</strong> has a leadership approval gate.</li>
     <li>Every <strong>code-bound output</strong> has an engineering review.</li>
+    <li>Every <strong>agent action is SOC-auditable</strong> &mdash; actor, input, output, approver, timestamp, target system &mdash; in an immutable log.</li>
+    <li>Agents <strong>enforce SOC gates, never bypass them</strong> &mdash; separation of duties, change evidence (Jira + MR + reviewer), customer-impact disclosure.</li>
+    <li>Approval gates are <strong>non-skippable for SOC-scoped changes</strong> &mdash; even high-confidence agent drafts route through the documented approver chain.</li>
     <li><strong>Phases are sequential</strong> at the macro level; in-phase work runs in parallel.</li>
     <li>Priority is <strong>independent of phase</strong> &mdash; Critical items in Phase 2 ship before Medium items in Phase 1.</li>
     <li>We don't gate any phase on <strong>perfection of the previous</strong>.</li>
