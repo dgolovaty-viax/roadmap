@@ -767,6 +767,16 @@
     <tr class="phase-row"><td colspan="6"><span class="ptag">Phase 04 &mdash; Scale Infrastructure</span> Performance, identity, automation. <span class="pmeta">Highest leverage once Phases 1&ndash;3 are real</span></td></tr>
 
     <tr>
+      <td class="id">A-13</td>
+      <td><span class="chip chip-arch">Arch</span></td>
+      <td class="b-init">Customer implementation guardrails &amp; anti-pattern warnings</td>
+      <td>Detect customer implementations that abuse or stress the platform &mdash; heavy queries, schema anti-patterns, deprecated API use, integration patterns that won't scale across realms. Each detection surfaces as an actionable alert with one of three recommended responses: <em>review the implementation</em>, <em>impose a limit</em>, or <em>publish a new dev guideline</em>. Builds on A-07's query complexity gate and A-02's error model.
+        <div class="outcome-line"><span class="otag">Outcome</span> Catches scale problems <strong>before they page someone</strong>. Bad patterns get flagged early and either contained or codified into guidelines &mdash; instead of becoming permanent platform load.</div>
+      </td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">A-02</span><span class="dep">A-07</span></td>
+    </tr>
+    <tr>
       <td class="id">A-12</td>
       <td><span class="chip chip-arch">Arch</span></td>
       <td class="b-init">Automated new customer provisioning</td>
