@@ -177,6 +177,8 @@ export default function SupportPage() {
           urgentOpen.push({
             key: issue.key, summary: f.summary || '', priority: p,
             client: CLIENTS[k], url: JIRA_URL + issue.key, age,
+            status:    f.status?.name ?? '',
+            statusCat: f.status?.statusCategory?.key ?? '',
           })
         }
         if (f.created) {
@@ -265,21 +267,32 @@ export default function SupportPage() {
       const hi = urgentOpen.filter((t) => t.priority === 'Highest').length
       const h  = urgentOpen.filter((t) => t.priority === 'High').length
       const sub = [hi ? `${hi} Highest` : '', h ? `${h} High` : ''].filter(Boolean).join(' · ')
+      const statusCls = (t) => {
+        const name = (t.status || '').toLowerCase()
+        if (!name) return 'b-m'
+        if (name.includes('block') || name.includes('hold') || name.includes('wait')) return 'b-hi'
+        if (t.statusCat === 'indeterminate') return 'b-l'  // green — being worked
+        if (t.statusCat === 'new')           return 'b-op' // blue  — untouched (To Do / Open)
+        return 'b-m'                                        // yellow fallback
+      }
       const rows = urgentOpen.map((t) => {
         const ageCls = t.age >= 14 ? 'bad' : t.age >= 7 ? 'warn' : ''
         const ageStr = t.age === 0 ? 'Today' : t.age === 1 ? '1d' : `${t.age}d`
         const priCls = t.priority === 'Highest' ? 'b-hi' : 'b-h'
+        const stCls  = statusCls(t)
+        const stLbl  = t.status || '—'
         return `<tr>
           <td><span class="b ${priCls}">${t.priority}</span></td>
           <td><a class="tkt-link" href="${t.url}" target="_blank" rel="noopener">${t.key} ↗</a></td>
           <td><span class="tkt-summary" title="${t.summary.replace(/"/g, '&quot;')}">${t.summary}</span></td>
           <td><span class="b b-op" style="font-size:11px">${t.client}</span></td>
+          <td><span class="b ${stCls}" style="font-size:11px">${stLbl}</span></td>
           <td><span class="age ${ageCls}">${ageStr} open</span></td>
         </tr>`
       }).join('')
       return `<div class="section urgent">
         <div class="sec-head"><h2><span class="u-count">${urgentOpen.length}</span>Open High-Priority Tickets</h2><p>${sub} · oldest first within priority</p></div>
-        <table><thead><tr><th>Priority</th><th>Ticket</th><th>Summary</th><th>Client</th><th>Age</th></tr></thead><tbody>${rows}</tbody></table>
+        <table><thead><tr><th>Priority</th><th>Ticket</th><th>Summary</th><th>Client</th><th>Status</th><th>Age</th></tr></thead><tbody>${rows}</tbody></table>
       </div>`
     }
 
