@@ -816,7 +816,14 @@
   </div>
 
   <div class="ap-agent">
-    <div class="ap-name"><span class="id">E-07</span> Per-customer comms</div>
+    <div class="ap-name"><span class="id">E-07</span> Generic comms</div>
+    <div class="ap-track">
+      <div class="ap-bar gen" style="grid-column: 7 / 11;">gen</div>
+    </div>
+  </div>
+
+  <div class="ap-agent">
+    <div class="ap-name"><span class="id">E-21</span> Per-customer comms</div>
     <div class="ap-track">
       <div class="ap-bar gen" style="grid-column: 7 / 11;">gen</div>
     </div>
@@ -890,12 +897,12 @@
       <td>&mdash;</td>
     </tr>
     <tr>
-      <td class="id">E-03</td>
+      <td class="id">E-20</td>
       <td><span class="chip chip-eng">Eng</span></td>
-      <td class="b-init">Customer-feature impact map</td>
-      <td>Curated YAML of which customers use which modules. Cross-references the manifest to produce per-customer impact summaries. Named owner, review cadence.</td>
+      <td class="b-init">Automated test baseline for existing APIs</td>
+      <td>Agent authors automated tests for the existing API surface so they can be invoked wherever needed in the delivery pipeline. Establishes the new automated-testing baseline that current and future test gates build on &mdash; existing endpoints get coverage before new-feature test authoring layers on top.</td>
       <td><span class="badge b-crit">Critical</span></td>
-      <td><span class="dep">E-01</span></td>
+      <td>&mdash;</td>
     </tr>
     <tr>
       <td class="id">E-04</td>
@@ -916,10 +923,10 @@
     <tr>
       <td class="id">E-07</td>
       <td><span class="chip chip-lead">Lead</span></td>
-      <td class="b-init">Per-customer comms drafts</td>
-      <td>Agent generates customer-specific email/Slack drafts using the impact map &mdash; references only items that affect that customer. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
+      <td class="b-init">Generic release communication (all customers)</td>
+      <td>Agent drafts a single generic release communication sent to all customers &mdash; a high-level summary of what is shipping in the release, not tailored per customer. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
       <td><span class="badge b-crit">Critical</span></td>
-      <td><span class="dep">E-00</span><span class="dep">E-03</span><span class="dep">E-05</span></td>
+      <td><span class="dep">E-00</span><span class="dep">E-05</span></td>
     </tr>
     <tr>
       <td class="id">L-01</td>
@@ -990,14 +997,6 @@
       <td><span class="dep">E-01</span></td>
     </tr>
     <tr>
-      <td class="id">E-09</td>
-      <td><span class="chip chip-eng">Eng</span></td>
-      <td class="b-init">Customer UAT scripts that travel</td>
-      <td>Every new implementation (Solventum, WileyAS-style) ships with automated UAT scripts covering that client's key flows. These become the regression baseline for that client on every future release.</td>
-      <td><span class="badge b-high">High</span></td>
-      <td><span class="dep">E-04</span></td>
-    </tr>
-    <tr>
       <td class="id">E-10</td>
       <td><span class="chip chip-eng">Eng</span></td>
       <td class="b-init">Deprecation runway tracker</td>
@@ -1028,6 +1027,22 @@
       <td>Position the AI-orchestrated release pipeline as a customer- and investor-visible demonstration. Real examples, not slideware.</td>
       <td><span class="badge b-med">Medium</span></td>
       <td><span class="dep">E-05</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-22</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Data migration impact notice</td>
+      <td>Agent drafts a per-client notification ahead of any data migration covering: what data is moving, how long the move will take, any system downtime during the move, and any write functionality that won't be available while the migration runs. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td><span class="dep">E-03</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-23</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Downtime expectation comms</td>
+      <td>Sets clear client expectations for any release- or migration-related downtime &mdash; expected window, duration, and what will and won't be available during it &mdash; so customers know what to expect ahead of time rather than after. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
+      <td><span class="badge b-high">High</span></td>
+      <td>&mdash;</td>
     </tr>
 
     <!-- PHASE 3 -->
@@ -1064,6 +1079,14 @@
       <td>Agent generates customer-facing how-to guides for new features and changed flows. Sources: feature descriptions, UAT scripts, per-customer impact map. Drafts step-by-step tasks with referenced screens and pseudo-walkthroughs. CIE + Delivery review before publish to docs.viax.io.</td>
       <td><span class="badge b-med">Medium</span></td>
       <td><span class="dep">E-09</span><span class="dep">E-18</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-21</td>
+      <td><span class="chip chip-lead">Lead</span></td>
+      <td class="b-init">Per-customer comms drafts</td>
+      <td>Agent generates customer-specific email/Slack drafts using the impact map &mdash; references only items that affect that customer. <strong>Lead-owned:</strong> CIE + Delivery approval gate before any send.</td>
+      <td><span class="badge b-crit">Critical</span></td>
+      <td><span class="dep">E-00</span><span class="dep">E-03</span><span class="dep">E-05</span></td>
     </tr>
     <tr>
       <td class="id">L-08</td>
@@ -1124,6 +1147,22 @@
       <td>Feature-based small releases as the default cadence. "10 tiny releases / day" tracked in the DORA dashboard as the leading indicator. Process retrospective every quarter.</td>
       <td><span class="badge b-high">High</span></td>
       <td><span class="dep">E-11</span><span class="dep">E-13</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-03</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Customer-feature impact map</td>
+      <td>Curated YAML of which customers use which modules. Cross-references the manifest to produce per-customer impact summaries. Named owner, review cadence.</td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td><span class="dep">E-01</span></td>
+    </tr>
+    <tr>
+      <td class="id">E-09</td>
+      <td><span class="chip chip-eng">Eng</span></td>
+      <td class="b-init">Customer UAT scripts that travel</td>
+      <td>Every new implementation (Solventum, WileyAS-style) ships with automated UAT scripts covering that client's key flows. These become the regression baseline for that client on every future release.</td>
+      <td><span class="badge b-fut">Future</span></td>
+      <td><span class="dep">E-04</span></td>
     </tr>
 
   </tbody>
