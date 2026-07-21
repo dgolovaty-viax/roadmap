@@ -64,6 +64,9 @@ export default function Nav() {
         <NavLink to="/support" className={navLinkClass}>
           Support
         </NavLink>
+        <NavLink to="/priority-board" className={navLinkClass}>
+          Priority Board
+        </NavLink>
       </div>
     </nav>
   )

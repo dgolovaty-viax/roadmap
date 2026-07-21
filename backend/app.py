@@ -515,6 +515,87 @@ def delete_idea(idea_id):
     return jsonify({"ok": True})
 
 
+# ── Kanban Priority Board ───────────────────────────────────────────────
+#
+# A lightweight board with user-defined columns and draggable cards. Card
+# order within a column IS the priority (position 0 = top). "Clear board"
+# wipes all cards but keeps the columns for the next round.
+
+@app.route("/api/kanban/board", methods=["GET"])
+def get_kanban_board():
+    columns = supabase.table("kanban_columns").select("*").order("position").execute()
+    cards = supabase.table("kanban_cards").select("*").order("position").execute()
+    return jsonify({"columns": columns.data, "cards": cards.data})
+
+
+@app.route("/api/kanban/columns", methods=["POST"])
+def upsert_kanban_column():
+    body = request.json or {}
+    row = {
+        "id":         body.get("id") or str(uuid.uuid4()),
+        "title":      body.get("title", "New Column"),
+        "position":   int(body.get("position", 0)),
+        "updated_at": now(),
+    }
+    res = supabase.table("kanban_columns").upsert(row, on_conflict="id").execute()
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/kanban/columns/<column_id>", methods=["DELETE"])
+def delete_kanban_column(column_id):
+    # Cards cascade-delete via the FK constraint.
+    supabase.table("kanban_columns").delete().eq("id", column_id).execute()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/cards", methods=["POST"])
+def upsert_kanban_card():
+    body = request.json or {}
+    column_id = body.get("columnId") or body.get("column_id")
+    if not column_id:
+        return jsonify({"error": "columnId is required"}), 400
+    row = {
+        "id":          body.get("id") or str(uuid.uuid4()),
+        "column_id":   column_id,
+        "title":       body.get("title", ""),
+        "description": body.get("description", ""),
+        "position":    int(body.get("position", 0)),
+        "updated_at":  now(),
+    }
+    res = supabase.table("kanban_cards").upsert(row, on_conflict="id").execute()
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/kanban/cards/<card_id>", methods=["DELETE"])
+def delete_kanban_card(card_id):
+    supabase.table("kanban_cards").delete().eq("id", card_id).execute()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/reorder", methods=["POST"])
+def reorder_kanban_cards():
+    """Persist a new card arrangement after a drag.
+
+    Body: { "positions": [ { "id", "columnId", "position" }, ... ] }
+    """
+    body = request.json or {}
+    positions = body.get("positions") or []
+    for p in positions:
+        supabase.table("kanban_cards").update({
+            "column_id":  p.get("columnId") or p.get("column_id"),
+            "position":   int(p.get("position", 0)),
+            "updated_at": now(),
+        }).eq("id", p.get("id")).execute()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/clear", methods=["POST"])
+def clear_kanban_board():
+    """Delete every card but keep the columns for the next round."""
+    supabase.table("kanban_cards").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+    return jsonify({"ok": True})
+
+
 # ── Meeting-scan → Idea Suggestions ────────────────────────────────────
 #
 # A nightly Cowork scheduled task reads new Granola meetings, asks Claude

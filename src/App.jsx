@@ -11,6 +11,7 @@ import ReleasePipelinePage from '@/pages/ReleasePipelinePage'
 import SupportPipelinePage from '@/pages/SupportPipelinePage'
 import SimplificationPage from '@/pages/SimplificationPage'
 import SupportPage from '@/pages/SupportPage'
+import KanbanPage from '@/pages/KanbanPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/ideas/vote/:sessionId" element={<IdeaVotePage />} />
             <Route path="/support" element={<SupportPage />} />
+            <Route path="/priority-board" element={<KanbanPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>

@@ -51,6 +51,18 @@ export const api = {
 
   promoteIdeas: (ideaIds, sessionId) => request('POST', '/api/promote-ideas', { ideaIds, sessionId }),
 
+  // ── Kanban Priority Board ────────────────────────────────────────────
+
+  kanban: {
+    board:        ()          => request('GET',    '/api/kanban/board'),
+    upsertColumn: (column)    => request('POST',   '/api/kanban/columns', column),
+    deleteColumn: (id)        => request('DELETE', `/api/kanban/columns/${id}`),
+    upsertCard:   (card)      => request('POST',   '/api/kanban/cards', card),
+    deleteCard:   (id)        => request('DELETE', `/api/kanban/cards/${id}`),
+    reorder:      (positions) => request('POST',   '/api/kanban/reorder', { positions }),
+    clear:        ()          => request('POST',   '/api/kanban/clear'),
+  },
+
   // ── Sessions ────────────────────────────────────────────────────────
 
   sessions: {
