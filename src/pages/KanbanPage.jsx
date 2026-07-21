@@ -12,6 +12,15 @@ function rankColor(i) {
   return RANK_COLORS[i] || '#9F9FAA'
 }
 
+const JIRA_BROWSE_BASE = 'https://viax.atlassian.net/browse'
+
+// Jira statusCategory key → pill colours
+function statusStyle(cat) {
+  if (cat === 'done')          return { bg: '#E8F9F3', color: '#1a7a5e', border: '#4FD0A5' }
+  if (cat === 'indeterminate') return { bg: '#E8F0FE', color: '#1a56db', border: '#93C5FD' }
+  return { bg: '#F0EFEC', color: '#666666', border: '#DDDDDD' } // "new" / To Do
+}
+
 function btn(bg, color, border) {
   return {
     background: bg, color, border: `1px solid ${border || bg}`,
@@ -128,9 +137,10 @@ function ColumnHeader({ column, count, onRename, onDelete, onAddCard }) {
 
 // ── Card ───────────────────────────────────────────────────────────────
 
-function Card({ card, rank, dragging, onClick, onDragStart, onDragEnd, onDragOver }) {
+function Card({ card, rank, dragging, jira, onClick, onDragStart, onDragEnd, onDragOver }) {
   const [hovered, setHovered] = useState(false)
   const preview = (card.description || '').trim().slice(0, 120)
+  const jiraKey = card.jira_issue_key
 
   return (
     <div
@@ -177,14 +187,250 @@ function Card({ card, rank, dragging, onClick, onDragStart, onDragEnd, onDragOve
             {preview}{(card.description || '').length > 120 ? '…' : ''}
           </p>
         )}
+
+        {jiraKey && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 }}>
+            <a
+              href={jira?.url || `${JIRA_BROWSE_BASE}/${jiraKey}`}
+              target="_blank" rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              title={jira?.summary ? `${jiraKey} — ${jira.summary}` : `Open ${jiraKey} in Jira`}
+              style={{
+                background: '#E8F0FE', border: '1px solid #0052CC', borderRadius: 5,
+                padding: '2px 7px', fontSize: 11, fontWeight: 700, color: '#0052CC',
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
+              }}
+            >
+              {jiraKey} ↗
+            </a>
+            {jira?.status && (() => {
+              const s = statusStyle(jira.statusCat)
+              return (
+                <span style={{
+                  background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+                  borderRadius: 5, padding: '2px 8px', fontSize: 10.5, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}>{jira.status}</span>
+              )
+            })()}
+            {jira?.assignee && (
+              <span style={{ fontSize: 11, color: '#888888', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{
+                  width: 16, height: 16, borderRadius: '50%', background: '#DDD7CE', color: '#555',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 800,
+                }}>{(jira.assignee[0] || '?').toUpperCase()}</span>
+                {jira.assignee}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ── Jira panel (inside the card modal) ─────────────────────────────────
+
+function jiraSearchJql(raw) {
+  const q = (raw || '').replace(/["\\]/g, '').trim()
+  const key = q.toUpperCase()
+  return `(project = VX AND summary ~ "${q}*") OR key = "${key}" ORDER BY updated DESC`
+}
+
+function JiraPanel({ card, jira, jiraConfigured, defaultTitle, defaultDescription, onLink, onUnlink, onCreate }) {
+  const linked = !!card.jira_issue_key
+  const [mode, setMode]   = useState('view')  // view | search | create
+  const [busy, setBusy]   = useState(false)
+  const [error, setError] = useState(null)
+
+  // search state
+  const [query, setQuery]     = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+
+  // create state
+  const [cTitle, setCTitle] = useState(defaultTitle || '')
+  const [cDesc, setCDesc]   = useState(defaultDescription || '')
+  const [components, setComponents] = useState([])
+  const [selectedComps, setSelectedComps] = useState(new Set())
+  const [showComps, setShowComps] = useState(false)
+  const [compsLoaded, setCompsLoaded] = useState(false)
+
+  // Debounced Jira search
+  useEffect(() => {
+    if (mode !== 'search') return
+    const q = query.trim()
+    if (q.length < 2) { setResults([]); return }
+    let alive = true
+    setSearching(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.jira.search({
+          jql: jiraSearchJql(q),
+          fields: ['summary', 'status', 'assignee'],
+          maxResults: 15,
+        })
+        if (alive) setResults(res?.issues || [])
+      } catch (e) {
+        if (alive) { setError(e.message || String(e)); setResults([]) }
+      } finally {
+        if (alive) setSearching(false)
+      }
+    }, 350)
+    return () => { alive = false; clearTimeout(t) }
+  }, [query, mode])
+
+  const loadComponents = async () => {
+    if (compsLoaded) { setShowComps(s => !s); return }
+    setShowComps(true)
+    try {
+      const r = await api.jira.components()
+      setComponents(r?.components || [])
+    } catch { /* non-fatal */ } finally { setCompsLoaded(true) }
+  }
+
+  const doLink = async (key) => {
+    setBusy(true); setError(null)
+    try { await onLink(key); setMode('view') }
+    catch (e) { setError(e.message || String(e)) }
+    finally { setBusy(false) }
+  }
+
+  const doUnlink = async () => {
+    setBusy(true); setError(null)
+    try { await onUnlink() }
+    catch (e) { setError(e.message || String(e)) }
+    finally { setBusy(false) }
+  }
+
+  const doCreate = async () => {
+    if (!cTitle.trim() || busy) return
+    setBusy(true); setError(null)
+    try {
+      await onCreate({ title: cTitle.trim(), description: cDesc, componentIds: [...selectedComps] })
+      setMode('view')
+    } catch (e) { setError(e.message || String(e)) }
+    finally { setBusy(false) }
+  }
+
+  const toggleComp = (id) => setSelectedComps(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
+  })
+
+  const sectionLabel = { ...fieldLabel, marginBottom: 8 }
+  const box = { border: '1px solid #E2E0DC', borderRadius: 8, padding: 14, background: '#FAFAF8' }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <label style={sectionLabel}>Jira</label>
+
+      {/* LINKED — show details */}
+      {linked ? (
+        <div style={{ ...box, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <a
+            href={jira?.url || `${JIRA_BROWSE_BASE}/${card.jira_issue_key}`}
+            target="_blank" rel="noreferrer"
+            style={{ background: '#E8F0FE', border: '1px solid #0052CC', borderRadius: 5, padding: '3px 9px', fontSize: 12, fontWeight: 700, color: '#0052CC', textDecoration: 'none' }}
+          >
+            {card.jira_issue_key} ↗
+          </a>
+          {jira?.status && (() => { const s = statusStyle(jira.statusCat); return (
+            <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: 5, padding: '3px 9px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{jira.status}</span>
+          )})()}
+          {jira?.assignee
+            ? <span style={{ fontSize: 12.5, color: '#555' }}>{jira.assignee}</span>
+            : <span style={{ fontSize: 12.5, color: '#AAA', fontStyle: 'italic' }}>Unassigned</span>}
+          {jira?.summary && <span style={{ fontSize: 12.5, color: '#888', flexBasis: '100%' }}>{jira.summary}</span>}
+          <button onClick={doUnlink} disabled={busy} style={{ ...btn('#FFF0F0', '#CC3333', '#FFCCCC'), marginLeft: 'auto', padding: '5px 12px' }}>
+            {busy ? '…' : 'Unlink'}
+          </button>
+        </div>
+      ) : !jiraConfigured ? (
+        <div style={{ ...box, fontSize: 12.5, color: '#888' }}>
+          Jira isn't configured on the server (set JIRA_EMAIL and JIRA_API_TOKEN).
+        </div>
+      ) : mode === 'view' ? (
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => { setMode('search'); setError(null) }} style={btn('#FFFFFF', '#0052CC', '#0052CC')}>🔗 Link existing issue</button>
+          <button onClick={() => { setMode('create'); setError(null); setCTitle(defaultTitle || ''); setCDesc(defaultDescription || '') }} style={btn('#FFFFFF', '#0052CC', '#0052CC')}>＋ Create &amp; link new</button>
+        </div>
+      ) : mode === 'search' ? (
+        <div style={box}>
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search VX issues by summary, or type a key (VX-123)…"
+            style={{ ...lightField, marginBottom: 8 }}
+          />
+          <div style={{ maxHeight: 220, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {searching && <div style={{ fontSize: 12.5, color: '#888', padding: 6 }}>Searching…</div>}
+            {!searching && query.trim().length >= 2 && results.length === 0 && (
+              <div style={{ fontSize: 12.5, color: '#888', padding: 6 }}>No matching issues.</div>
+            )}
+            {results.map(it => {
+              const f = it.fields || {}
+              const s = statusStyle(f.status?.statusCategory?.key)
+              return (
+                <button
+                  key={it.key}
+                  onClick={() => doLink(it.key)}
+                  disabled={busy}
+                  style={{ background: '#FFFFFF', border: '1px solid #E2E0DC', borderRadius: 6, padding: '9px 12px', textAlign: 'left', cursor: 'pointer', fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0052CC', flexShrink: 0 }}>{it.key}</span>
+                  <span style={{ fontSize: 12.5, color: '#1E1E1E', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.summary}</span>
+                  {f.status?.name && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: 4, padding: '1px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', flexShrink: 0 }}>{f.status.name}</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button onClick={() => { setMode('view'); setQuery(''); setResults([]) }} style={btn('#F3F3F3', '#555', '#DDD')}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        /* create mode */
+        <div style={box}>
+          <label style={{ ...fieldLabel, marginBottom: 4 }}>Summary</label>
+          <input value={cTitle} onChange={e => setCTitle(e.target.value)} style={{ ...lightField, marginBottom: 10, fontWeight: 600 }} />
+          <label style={{ ...fieldLabel, marginBottom: 4 }}>Description</label>
+          <textarea value={cDesc} onChange={e => setCDesc(e.target.value)} rows={3} style={{ ...lightField, resize: 'vertical', marginBottom: 10, lineHeight: 1.5 }} />
+
+          <button onClick={loadComponents} style={{ background: 'none', border: 'none', color: '#0052CC', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: FONT }}>
+            {showComps ? '▾' : '▸'} Components {selectedComps.size > 0 ? `(${selectedComps.size})` : '(optional)'}
+          </button>
+          {showComps && (
+            <div style={{ marginTop: 8, maxHeight: 140, overflow: 'auto', border: '1px solid #E2E0DC', borderRadius: 6, padding: 6, background: '#FFFFFF' }}>
+              {components.length === 0
+                ? <div style={{ fontSize: 12, color: '#999', padding: 6 }}>No components cached.</div>
+                : components.map(c => (
+                    <label key={c.jira_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', cursor: 'pointer', fontSize: 12.5 }}>
+                      <input type="checkbox" checked={selectedComps.has(c.jira_id)} onChange={() => toggleComp(c.jira_id)} />
+                      {c.name}
+                    </label>
+                  ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button onClick={doCreate} disabled={busy || !cTitle.trim()} style={{ ...btn('#0052CC', '#FFFFFF'), opacity: (busy || !cTitle.trim()) ? 0.5 : 1 }}>
+              {busy ? 'Creating…' : 'Create Story & link'}
+            </button>
+            <button onClick={() => setMode('view')} disabled={busy} style={btn('#F3F3F3', '#555', '#DDD')}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {error && <div style={{ marginTop: 8, fontSize: 12, color: '#C92A2A' }}>⚠ {error}</div>}
     </div>
   )
 }
 
 // ── Card edit / create modal ───────────────────────────────────────────
 
-function CardModal({ initial, onSave, onDelete, onClose }) {
+function CardModal({ initial, jira, jiraConfigured, onSave, onDelete, onClose, onLinkJira, onUnlinkJira, onCreateJira }) {
   const isNew = !initial.id
   const [title, setTitle]             = useState(initial.title || '')
   const [description, setDescription] = useState(initial.description || '')
@@ -223,7 +469,7 @@ function CardModal({ initial, onSave, onDelete, onClose }) {
           />
         </div>
 
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 24 }}>
           <label style={fieldLabel}>Description</label>
           <textarea
             value={description}
@@ -233,6 +479,19 @@ function CardModal({ initial, onSave, onDelete, onClose }) {
             style={{ ...lightField, resize: 'vertical', lineHeight: 1.6 }}
           />
         </div>
+
+        {!isNew && (
+          <JiraPanel
+            card={initial}
+            jira={jira}
+            jiraConfigured={jiraConfigured}
+            defaultTitle={title}
+            defaultDescription={description}
+            onLink={key => onLinkJira(initial, key)}
+            onUnlink={() => onUnlinkJira(initial)}
+            onCreate={payload => onCreateJira(initial, payload)}
+          />
+        )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -328,6 +587,72 @@ export default function KanbanPage() {
     })
     return map
   }, [columns, cards])
+
+  // ── Jira info (live status/assignee for linked cards) ───────────────
+
+  const [jiraInfo, setJiraInfo]             = useState({})
+  const [jiraConfigured, setJiraConfigured] = useState(true)
+
+  const linkedKeys    = useMemo(
+    () => [...new Set(cards.map(c => c.jira_issue_key).filter(Boolean))],
+    [cards]
+  )
+  const linkedKeysStr = linkedKeys.join(',')
+
+  useEffect(() => {
+    const keys = linkedKeysStr ? linkedKeysStr.split(',') : []
+    if (!keys.length) { setJiraInfo({}); return }
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await api.jira.search({
+          jql: `key in (${keys.join(',')})`,
+          fields: ['summary', 'status', 'assignee'],
+          maxResults: 100,
+        })
+        if (!alive) return
+        const map = {}
+        ;(res?.issues || []).forEach(it => {
+          const f = it.fields || {}
+          map[it.key] = {
+            summary:   f.summary,
+            status:    f.status?.name,
+            statusCat: f.status?.statusCategory?.key,
+            assignee:  f.assignee?.displayName || null,
+            url:       `${JIRA_BROWSE_BASE}/${it.key}`,
+          }
+        })
+        setJiraInfo(map)
+      } catch (e) {
+        if (alive) { console.error('jira info', e); if (/503/.test(String(e))) setJiraConfigured(false) }
+      }
+    })()
+    return () => { alive = false }
+  }, [linkedKeysStr])
+
+  // Keep the open modal's card object in sync after a mutation
+  const patchCard = (saved) => {
+    setCards(prev => prev.map(c => c.id === saved.id ? saved : c))
+    setEditCard(prev => (prev && prev.id === saved.id ? saved : prev))
+  }
+
+  const linkJira = async (card, issueKey) => {
+    const saved = await api.kanban.linkJira(card.id, issueKey)
+    patchCard(saved)
+    return saved
+  }
+
+  const unlinkJira = async (card) => {
+    const saved = await api.kanban.unlinkJira(card.id)
+    patchCard(saved)
+    return saved
+  }
+
+  const createJira = async (card, payload) => {
+    const res = await api.kanban.createJira(card.id, payload)
+    if (res?.card) patchCard(res.card)
+    return res
+  }
 
   // ── Column ops ──────────────────────────────────────────────────────
 
@@ -531,6 +856,7 @@ export default function KanbanPage() {
                           card={card}
                           rank={i}
                           dragging={dragId === card.id}
+                          jira={card.jira_issue_key ? jiraInfo[card.jira_issue_key] : null}
                           onClick={() => setEditCard(card)}
                           onDragStart={() => setDragId(card.id)}
                           onDragEnd={() => { setDragId(null); setDropTarget(null) }}
@@ -555,9 +881,14 @@ export default function KanbanPage() {
       {editCard && (
         <CardModal
           initial={editCard}
+          jira={editCard.jira_issue_key ? jiraInfo[editCard.jira_issue_key] : null}
+          jiraConfigured={jiraConfigured}
           onSave={patch => saveCard(editCard, patch)}
           onDelete={() => deleteCard(editCard)}
           onClose={() => setEditCard(null)}
+          onLinkJira={linkJira}
+          onUnlinkJira={unlinkJira}
+          onCreateJira={createJira}
         />
       )}
     </div>

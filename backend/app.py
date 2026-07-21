@@ -596,6 +596,67 @@ def clear_kanban_board():
     return jsonify({"ok": True})
 
 
+@app.route("/api/kanban/cards/<card_id>/link-jira", methods=["POST"])
+def link_kanban_card_jira(card_id):
+    """Link an existing Jira issue to a card. Body: { "issueKey": "VX-1234" }"""
+    body = request.get_json() or {}
+    issue_key = (body.get("issueKey") or body.get("issue_key") or "").strip().upper()
+    if not issue_key:
+        return jsonify({"error": "issueKey is required"}), 400
+    supabase.table("kanban_cards").update({
+        "jira_issue_key": issue_key,
+        "updated_at":     now(),
+    }).eq("id", card_id).execute()
+    full = supabase.table("kanban_cards").select("*").eq("id", card_id).single().execute()
+    return jsonify(full.data), 200
+
+
+@app.route("/api/kanban/cards/<card_id>/link-jira", methods=["DELETE"])
+def unlink_kanban_card_jira(card_id):
+    """Remove the Jira link from a card (does not touch the Jira issue)."""
+    supabase.table("kanban_cards").update({
+        "jira_issue_key": None,
+        "updated_at":     now(),
+    }).eq("id", card_id).execute()
+    full = supabase.table("kanban_cards").select("*").eq("id", card_id).single().execute()
+    return jsonify(full.data), 200
+
+
+@app.route("/api/kanban/cards/<card_id>/create-jira", methods=["POST"])
+def create_kanban_card_jira(card_id):
+    """Create a VX Story from a card and link it. Body (all optional):
+    { "title", "description", "componentIds": ["10001", ...] }
+    Falls back to the card's own title/description when not provided.
+    """
+    if not _jira_configured():
+        return jsonify({"error": "Jira credentials are not configured on the server"}), 503
+
+    card = supabase.table("kanban_cards").select("*").eq("id", card_id).single().execute()
+    if not card.data:
+        return jsonify({"error": "Card not found"}), 404
+
+    body        = request.get_json() or {}
+    title       = (body.get("title") or card.data.get("title") or "").strip()
+    description = body.get("description")
+    if description is None:
+        description = card.data.get("description") or ""
+    component_ids = body.get("componentIds") or body.get("component_ids") or []
+
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+
+    key, url, err = _create_jira_story(title, description, component_ids)
+    if err is not None:
+        return jsonify({"error": "Failed to create Jira issue", **err}), 502
+
+    supabase.table("kanban_cards").update({
+        "jira_issue_key": key,
+        "updated_at":     now(),
+    }).eq("id", card_id).execute()
+    full = supabase.table("kanban_cards").select("*").eq("id", card_id).single().execute()
+    return jsonify({"ok": True, "card": full.data, "jira_issue_key": key, "jira_url": url}), 201
+
+
 # ── Meeting-scan → Idea Suggestions ────────────────────────────────────
 #
 # A nightly Cowork scheduled task reads new Granola meetings, asks Claude
@@ -922,6 +983,27 @@ def _description_to_adf(text):
                 "content": [{"type": "text", "text": chunk}],
             })
     return {"type": "doc", "version": 1, "content": paragraphs}
+
+
+def _create_jira_story(title, description, component_ids=None):
+    """Create a Story in the VX project. Returns (issue_key, issue_url, error).
+
+    On success error is None. On failure issue_key/issue_url are None and error
+    is a dict with jira_status + jira_response for the caller to surface.
+    """
+    fields = {
+        "project":     {"key": JIRA_PROJECT_KEY},
+        "summary":     title,
+        "description": _description_to_adf(description),
+        "issuetype":   {"name": "Story"},
+    }
+    if component_ids:
+        fields["components"] = [{"id": str(cid)} for cid in component_ids]
+    status, data = _jira_request("POST", "/rest/api/3/issue", json_body={"fields": fields})
+    if status >= 400 or not isinstance(data, dict) or not data.get("key"):
+        return None, None, {"jira_status": status, "jira_response": data}
+    key = data["key"]
+    return key, f"{JIRA_BASE_URL}/browse/{key}", None
 
 
 @app.route("/api/jira/components", methods=["GET"])

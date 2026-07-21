@@ -38,6 +38,14 @@ create index if not exists idx_kanban_cards_column_position
   on public.kanban_cards (column_id, position asc);
 
 
+-- The Flask backend connects with a single key and does its own access
+-- control, exactly like the epics/ideas tables. Keep RLS off so the backend
+-- can read and write these tables (otherwise reads return empty and writes
+-- are silently rejected).
+alter table public.kanban_columns disable row level security;
+alter table public.kanban_cards   disable row level security;
+
+
 -- Seed a few default columns so the board isn't empty on first load.
 -- (Only inserts when the table is empty.)
 insert into public.kanban_columns (title, position)

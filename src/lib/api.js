@@ -61,6 +61,9 @@ export const api = {
     deleteCard:   (id)        => request('DELETE', `/api/kanban/cards/${id}`),
     reorder:      (positions) => request('POST',   '/api/kanban/reorder', { positions }),
     clear:        ()          => request('POST',   '/api/kanban/clear'),
+    linkJira:     (id, issueKey) => request('POST',   `/api/kanban/cards/${id}/link-jira`, { issueKey }),
+    unlinkJira:   (id)           => request('DELETE', `/api/kanban/cards/${id}/link-jira`),
+    createJira:   (id, payload)  => request('POST',   `/api/kanban/cards/${id}/create-jira`, payload || {}),
   },
 
   // ── Sessions ────────────────────────────────────────────────────────
