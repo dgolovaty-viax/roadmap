@@ -14,3 +14,9 @@ __pycache__/
 .supabase/
 supabase/.branches/
 supabase/.temp/
+
+# macOS
+.DS_Store
+
+# Claude working files
+Claude outputs/

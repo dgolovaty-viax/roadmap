@@ -7,6 +7,7 @@ A product roadmap tool for the viax team. It has five main sections:
 - **North Star** — vision and OKR tracking.
 - **Ideas** — idea cards with tags, tag filtering, and a structured voting system to promote ideas into planning epics.
 - **Sessions** — meeting/session notes.
+- **Marketing Blitz** — a reusable launch-campaign template. One page renders any blitz (`/blitz/:slug`); the first is **Blitz: RMB** at `/blitz/rmb`. Six phases from concepts to implementation showcase, with dates, owners' commitments, audience decks and LinkedIn post review all persisted to Supabase.
 
 Live at: **https://roadmap-viax.vercel.app**
 
@@ -110,6 +111,54 @@ Live at: **https://roadmap-viax.vercel.app**
 | idea_ids | uuid[] | array of up to 5 idea IDs |
 | created_at | timestamptz | |
 
+
+### `blitzes` (Marketing Blitz)
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| slug | text | unique — the URL segment, e.g. `rmb` for `/blitz/rmb` |
+| name | text | e.g. `Blitz: RMB` |
+| feature | text | the feature being launched |
+| status | text | default `active` |
+| created_at / updated_at | timestamptz | |
+
+### `blitz_fields`
+Key/value store for every free-text, date and choice input on a blitz page. Keyed by the field ids
+used in `BLITZ_CONTENT`, so adding an input to the page needs no schema change.
+
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| blitz_id | uuid | FK → blitzes |
+| field_key | text | unique together with `blitz_id` |
+| value | text | |
+| updated_at | timestamptz | |
+
+### `blitz_meetings`
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| blitz_id | uuid | FK → blitzes |
+| phase | text | `field` (phase 3), `analyst` (phase 4), `qbr` (already-held accounts) |
+| name | text | company name |
+| audience | text | `client`, `partner`, `analyst`, `qbr` |
+| angle | text | the talk-track note shown on the card |
+| meet_at | timestamptz | nullable |
+| sharers | text | who committed to share the LinkedIn posts |
+| position | integer | order within the phase |
+
+Seeded from `meetingSeeds` in the page config the first time a blitz loads, then fully editable.
+
+### `blitz_decks`
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| blitz_id | uuid | FK → blitzes |
+| audience | text | `client`, `partner`, `agency` — unique with `blitz_id` |
+| file_name | text | |
+| link | text | optional shared link instead of an upload |
+| content | text | the deck's raw HTML (capped at 4MB by the backend) |
+
 ---
 
 ## Running locally
@@ -175,6 +224,7 @@ git remote set-url origin https://<token>@github.com/dgolovaty-viax/roadmap.git
 - New backend endpoints go in `backend/app.py`.
 - Use Tailwind for styling. shadcn/ui components are available (see `components.json`).
 - The frontend uses path alias `@/` pointing to `src/`.
+- **Adding a new Marketing Blitz campaign:** add an entry to `BLITZ_CONTENT` in `src/pages/BlitzPage.jsx` keyed by its slug, then add the item to `BLITZ_ITEMS` in `src/components/Nav.jsx`. The `/blitz/:slug` route and the `blitzes` row are handled automatically — the backend's `/api/blitz/<slug>/init` creates the row and seeds its meetings on first load.
 
 ---
 

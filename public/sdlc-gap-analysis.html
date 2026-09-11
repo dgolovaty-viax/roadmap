@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Pipeline v4 Against the Playbook</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Funnel+Sans:wght@300..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground:      #F8F7F6;
+  --surface:     #FEFEFE;
+  --surface-2:   #F2F1F0;
+  --ink:         #1E1E1E;
+  --ink-muted:   #525252;
+  --ink-faint:   #8A8A8A;
+  --border:      #E2E0DC;
+  --border-firm: #CFCCC6;
+
+  --mint:        #5ED49A;
+  --mint-text:   #177558;
+  --mint-soft:   #E8F8EE;
+
+  --red:         #C0433F;
+  --red-soft:    #FBE7E5;
+  --amber:       #9B5B12;
+  --amber-soft:  #FDF0DF;
+  --lav:         #4A3D9E;
+  --lav-soft:    #EDEBFC;
+
+  --font-display: "Funnel Sans", Inter, system-ui, sans-serif;
+  --font-mono:    "DM Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #1A1A19;
+    --surface:     #232322;
+    --surface-2:   #2B2B2A;
+    --ink:         #EDEBE8;
+    --ink-muted:   #A8A5A0;
+    --ink-faint:   #7C7975;
+    --border:      #383836;
+    --border-firm: #4A4A47;
+
+    --mint:        #90E9B8;
+    --mint-text:   #90E9B8;
+    --mint-soft:   #1D3229;
+
+    --red:         #E8867F;
+    --red-soft:    #35211F;
+    --amber:       #E3B172;
+    --amber-soft:  #33281A;
+    --lav:         #BDB6F2;
+    --lav-soft:    #262340;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:      #1A1A19;
+  --surface:     #232322;
+  --surface-2:   #2B2B2A;
+  --ink:         #EDEBE8;
+  --ink-muted:   #A8A5A0;
+  --ink-faint:   #7C7975;
+  --border:      #383836;
+  --border-firm: #4A4A47;
+
+  --mint:        #90E9B8;
+  --mint-text:   #90E9B8;
+  --mint-soft:   #1D3229;
+
+  --red:         #E8867F;
+  --red-soft:    #35211F;
+  --amber:       #E3B172;
+  --amber-soft:  #33281A;
+  --lav:         #BDB6F2;
+  --lav-soft:    #262340;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-display);
+  background: var(--ground);
+  color: var(--ink);
+  line-height: 1.55;
+  padding: 40px 36px 72px;
+  max-width: 1180px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- primitives ---------- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--mint-text);
+}
+.mono { font-family: var(--font-mono); }
+
+h1 {
+  font-size: 30px; font-weight: 500;
+  letter-spacing: -0.6px; line-height: 1.15;
+  text-wrap: balance;
+  margin-top: 8px;
+}
+h1 em { font-style: normal; color: var(--mint-text); }
+
+.lede {
+  font-size: 15px; color: var(--ink-muted);
+  margin-top: 12px; max-width: 68ch; line-height: 1.6;
+}
+
+h2 {
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.2px;
+  border-bottom: 2px solid var(--mint);
+  padding-bottom: 4px;
+  display: inline-block;
+}
+h3 {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+p { font-size: 13.5px; color: var(--ink-muted); line-height: 1.65; max-width: 78ch; }
+p strong, li strong { color: var(--ink); font-weight: 600; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.5px 4px;
+  color: var(--ink);
+}
+
+header.page {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+header.page .stamp {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: right; flex-shrink: 0; line-height: 1.9;
+  padding-top: 4px;
+}
+
+section { margin-top: 44px; }
+section > h2 + p { margin-top: 12px; }
+
+/* ---------- thesis ---------- */
+.thesis {
+  margin-top: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--mint);
+  border-radius: 5px;
+  padding: 22px 26px;
+}
+.thesis .k {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--mint-text);
+}
+.thesis p {
+  font-size: 16px; line-height: 1.55; color: var(--ink);
+  margin-top: 8px; max-width: 84ch; font-weight: 400;
+}
+.thesis p + p { font-size: 13.5px; color: var(--ink-muted); margin-top: 12px; }
+
+/* ---------- stage map ---------- */
+.stages { display: flex; flex-direction: column; gap: 1px; margin-top: 20px; background: var(--border); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.stage {
+  display: grid;
+  grid-template-columns: 128px 1fr 232px 104px;
+  gap: 20px;
+  align-items: start;
+  background: var(--surface);
+  padding: 15px 18px;
+}
+.stage-id { display: flex; flex-direction: column; gap: 2px; }
+.stage-id .n { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--ink-faint); }
+.stage-id .nm { font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -0.1px; }
+.plays { display: flex; flex-wrap: wrap; gap: 5px; }
+.play {
+  font-size: 11.5px; color: var(--ink-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+.play.found { border-color: var(--mint); color: var(--mint-text); background: var(--mint-soft); }
+.maps { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); line-height: 1.7; }
+.maps .none { color: var(--red); }
+.verdict {
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  border-radius: 3px; padding: 3px 7px;
+  text-align: center; white-space: nowrap;
+  align-self: start;
+}
+.v-none { background: var(--red-soft); color: var(--red); }
+.v-part { background: var(--amber-soft); color: var(--amber); }
+.v-good { background: var(--mint-soft); color: var(--mint-text); }
+.legend { display: flex; gap: 18px; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em; flex-wrap: wrap; }
+.legend span::before { content: "▪ "; color: var(--mint); }
+
+/* ---------- foundation ---------- */
+.found-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+.found-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--red);
+  border-radius: 4px;
+  padding: 13px 15px;
+}
+.found-card .t { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.found-card .d { font-size: 12px; color: var(--ink-muted); margin-top: 4px; line-height: 1.5; }
+.found-card .s {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--red); margin-top: 8px;
+}
+
+/* ---------- callout ---------- */
+.callout {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border-firm);
+  border-radius: 5px;
+  padding: 22px 26px;
+}
+.arith { display: flex; flex-direction: column; gap: 3px; border-right: 1px solid var(--border); padding-right: 22px; }
+.arith .row { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.arith .row b { color: var(--ink); font-weight: 500; }
+.arith .rule { border-top: 1px solid var(--border-firm); margin: 6px 0 4px; }
+.arith .out { font-family: var(--font-mono); font-size: 21px; color: var(--red); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+.arith .out-lbl { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.callout-body h3 { margin-bottom: 6px; }
+.callout-body p + p { margin-top: 10px; }
+
+/* ---------- tables ---------- */
+.tbl-wrap { overflow-x: auto; margin-top: 18px; border: 1px solid var(--border); border-radius: 5px; }
+table { border-collapse: collapse; width: 100%; min-width: 900px; background: var(--surface); }
+thead th {
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: left;
+  padding: 9px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-firm);
+  white-space: nowrap;
+}
+tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 13px; color: var(--ink-muted); line-height: 1.55; }
+tbody tr:last-child td { border-bottom: none; }
+td.id { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); white-space: nowrap; }
+td.nm { color: var(--ink); font-weight: 600; font-size: 13px; width: 210px; }
+td.dep { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+tr.phase-head td {
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink); font-weight: 500;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-firm);
+}
+tr.phase-head td em { font-style: normal; color: var(--ink-faint); letter-spacing: 0.04em; text-transform: none; font-size: 11px; margin-left: 10px; }
+
+.pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 3px; padding: 2.5px 6px; white-space: nowrap;
+  display: inline-block;
+}
+.p-crit { background: var(--red-soft); color: var(--red); }
+.p-high { background: var(--amber-soft); color: var(--amber); }
+.p-med  { background: var(--surface-2); color: var(--ink-faint); border: 1px solid var(--border); }
+.t-dev  { background: var(--lav-soft); color: var(--lav); }
+.t-eng  { background: var(--mint-soft); color: var(--mint-text); }
+.t-lead { background: var(--amber-soft); color: var(--amber); }
+
+/* ---------- revisions ---------- */
+.rev { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.rev-item {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  align-items: baseline;
+}
+.rev-item .tag { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); }
+.rev-item .tag i { font-style: normal; display: block; font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint); margin-top: 3px; }
+.rev-item .body { font-size: 13px; color: var(--ink-muted); line-height: 1.6; }
+.rev-item .body b { color: var(--ink); font-weight: 600; }
+
+/* ---------- keep list ---------- */
+.keep { margin-top: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 26px; }
+.keep div { font-size: 13px; color: var(--ink-muted); padding-left: 16px; position: relative; line-height: 1.55; }
+.keep div::before { content: "✓"; position: absolute; left: 0; color: var(--mint-text); font-size: 12px; }
+.keep div b { color: var(--ink); font-weight: 600; }
+
+/* ---------- order ---------- */
+.order { margin-top: 20px; display: flex; flex-direction: column; gap: 0; }
+.order-step { display: grid; grid-template-columns: 116px 1fr; gap: 20px; padding: 13px 0; border-top: 1px solid var(--border); }
+.order-step:first-child { border-top: none; }
+.order-step .when { font-family: var(--font-mono); font-size: 11px; color: var(--mint-text); letter-spacing: 0.04em; text-transform: uppercase; }
+.order-step .what { font-size: 13px; color: var(--ink-muted); line-height: 1.6; }
+.order-step .what b { color: var(--ink); font-weight: 600; }
+
+footer {
+  margin-top: 56px; padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; gap: 20px;
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint);
+  flex-wrap: wrap;
+}
+
+a { color: var(--mint-text); text-decoration: none; border-bottom: 1px solid var(--mint); }
+a:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 2px; }
+
+@media (max-width: 900px) {
+  body { padding: 28px 20px 56px; }
+  .stage { grid-template-columns: 1fr; gap: 10px; }
+  .found-grid { grid-template-columns: 1fr; }
+  .callout { grid-template-columns: 1fr; gap: 18px; }
+  .arith { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 16px; }
+  .keep { grid-template-columns: 1fr; }
+  .rev-item, .order-step { grid-template-columns: 1fr; gap: 8px; }
+  header.page { flex-direction: column; gap: 14px; }
+  header.page .stamp { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="page">
+  <div>
+    <div class="eyebrow">Gap Analysis · AI-Native SDLC Playbook × Release Pipeline v4</div>
+    <h1>Your plan builds the <em>last</em> tier of the playbook first</h1>
+    <p class="lede">Release Pipeline 2026 v4 is a strong release-operations plan. Measured against Anthropic's AI-Native SDLC Playbook it is missing a whole layer — the one the course treats as having no prerequisites at all. Below: where the two line up, the six foundation plays v4 omits, and thirteen initiatives drafted in your existing backlog format.</p>
+  </div>
+  <div class="stamp">
+    Prepared 02 Sep 2026<br>
+    Source · v4 · May 2026<br>
+    Course · 14 lessons / 6 stages
+  </div>
+</header>
+
+<div class="thesis">
+  <div class="k">The finding</div>
+  <p>The playbook's dependency graph starts with six plays that have <strong>zero prerequisites</strong>: capture intent, <code>CLAUDE.md</code>, skills, feedback loop, hooks, plan mode. CI/CD sits in the fourth tier and closing the loop is last. Release Pipeline v4 contains <strong>none of the six</strong> — and its Phase 01 "Foundation" is made almost entirely of fourth- and final-tier work.</p>
+  <p>That is not a scoping error, it is a boundary choice: v4 is a <em>release</em> pipeline. Its own agent map begins at "Pickup," so everything upstream of a ticket — how intent becomes a spec, how a spec becomes a plan, how an engineer works with an agent — sits outside the plan. The consequence is that v4 spends its Phase 01 automating the coordination of a build process it never makes faster, and hard-codes human approval gates sized for today's throughput rather than tomorrow's.</p>
+</div>
+
+<section>
+  <h2>Stage coverage</h2>
+  <p>The playbook's six stages against v4's initiative backlog. Mint chips are the zero-prerequisite foundation plays.</p>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 1</span><span class="nm">Plan</span></div>
+      <div class="plays"><span class="play found">Capture as intent.md</span></div>
+      <div class="maps"><span class="none">No mapped initiative</span><br>Nearest: your roadmap app's Ideas → voting → epics flow, which is outside the plan.</div>
+      <div class="verdict v-none">Not covered</div>
+    </div>
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 2</span><span class="nm">Design</span></div>
+      <div class="plays"><span class="play">Requirements and design</span></div>
+      <div class="maps"><span class="none">No mapped initiative</span><br>v4 never names a design or requirements artifact.</div>
+      <div class="verdict v-none">Not covered</div>
+    </div>
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 3</span><span class="nm">Build</span></div>
+      <div class="plays"><span class="play found">Plan mode</span><span class="play found">CLAUDE.md</span><span class="play found">Skills</span><span class="play">Parallel sessions &amp; subagents</span></div>
+      <div class="maps"><span class="none">No mapped initiative</span><br>E-04 mentions "the Claude skills we ship" — as a test target, not as encoded policy.</div>
+      <div class="verdict v-none">Not covered</div>
+    </div>
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 4</span><span class="nm">Test</span></div>
+      <div class="plays"><span class="play found">Feedback loop</span><span class="play">Continuous evals in CI</span></div>
+      <div class="maps">E-20 · E-04 · E-08 · E-11 — strong on test authoring and coverage.<br>Evals: E-17 only, Phase 04, Medium.</div>
+      <div class="verdict v-part">Partial</div>
+    </div>
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 5</span><span class="nm">Deploy</span></div>
+      <div class="plays"><span class="play found">Hooks as approval gates</span><span class="play">AI in the PR review loop</span><span class="play">CI/CD integration</span></div>
+      <div class="maps">E-02 · E-11 · E-12 · E-13 · full human gate matrix.<br><span class="none">No AI review, no hooks, no agent-in-CI.</span></div>
+      <div class="verdict v-part">Partial</div>
+    </div>
+    <div class="stage">
+      <div class="stage-id"><span class="n">STAGE 6</span><span class="nm">Maintain</span></div>
+      <div class="plays"><span class="play">Closing the loop on metrics</span></div>
+      <div class="maps">E-13 · E-14 · E-15 · L-05 · L-10 — closest match in the plan.<br>Loop stops at an alert to a human, not an artifact.</div>
+      <div class="verdict v-good">Well covered</div>
+    </div>
+  </div>
+  <div class="legend">
+    <span>Foundation play — no prerequisites in the playbook's dependency graph</span>
+    <span>Coverage judged against v4's initiative descriptions, not intent</span>
+  </div>
+</section>
+
+<section>
+  <h2>The six missing foundation plays</h2>
+  <p>Each of these has no prerequisites, lands inside one repo, and is measured in days rather than quarters. They are also what makes the rest of v4 cheaper to build.</p>
+
+  <div class="found-grid">
+    <div class="found-card">
+      <div class="t">CLAUDE.md per repo</div>
+      <div class="d">Build, test and lint commands, the conventions that matter, and the mistakes agents keep repeating. Under a page. Checked into Git so it is reviewable.</div>
+      <div class="s">Unblocks E-04 · E-20 · every eval</div>
+    </div>
+    <div class="found-card">
+      <div class="t">Give the agent a feedback loop</div>
+      <div class="d">One command that defines "done" — <code>make test</code>, <code>make build</code> — declared in CLAUDE.md so the agent verifies itself before a human sees the diff.</div>
+      <div class="s">Directly de-risks E-04</div>
+    </div>
+    <div class="found-card">
+      <div class="t">Hooks as approval gates</div>
+      <div class="d">Scripts that allow, block, or ask before a tool runs. Managed settings distributed by MDM, with <code>allowManagedHooksOnly</code> so they cannot be overridden locally.</div>
+      <div class="s">The missing enforcement for your SOC principles</div>
+    </div>
+    <div class="found-card">
+      <div class="t">Skills as institutional knowledge</div>
+      <div class="d">SOC change-control, GraphQL and API conventions, Determination Model rules encoded as <code>.claude/skills/</code> and applied at authoring time, not at review time.</div>
+      <div class="s">Shifts review findings left</div>
+    </div>
+    <div class="found-card">
+      <div class="t">Plan mode as the default start</div>
+      <div class="d">A committed <code>plan.md</code> — files that change, order of work, risks, proof — reviewed while the change is still cheap to redirect.</div>
+      <div class="s">Becomes your change-evidence record</div>
+    </div>
+    <div class="found-card">
+      <div class="t">Capture as intent.md</div>
+      <div class="d">Ideas captured as a versioned proto-spec by the originator, with Claude asking the scope and constraint questions. Your epic template already is this format.</div>
+      <div class="s">Cheapest of the six — the tooling exists</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The gate arithmetic</h2>
+  <p>The playbook's central claim is that agents move the bottleneck: once build accelerates, review and approval become the constraint and have to be redesigned. v4's gate matrix was drawn for 2–4 releases a year while L-10 targets ten releases a day.</p>
+
+  <div class="callout">
+    <div class="arith">
+      <div class="row"><span>Releases / day</span><b>10</b></div>
+      <div class="row"><span>Delivery Lead gates</span><b>× 6</b></div>
+      <div class="row"><span>CIE / customer gates</span><b>× 4</b></div>
+      <div class="rule"></div>
+      <div class="out">~100</div>
+      <div class="out-lbl">approvals per day, two roles</div>
+    </div>
+    <div class="callout-body">
+      <h3>What to change</h3>
+      <p>Your agent map assigns the Delivery Lead six approvals per release — scope, cut, notes, window, and two promotions — plus a rollback decision, and the CIE four more. At L-10's target cadence that is roughly a hundred human approvals a day concentrated on two roles. The releases will queue behind the calendar, and the phase-04 outcome ("closed loop") will be gated by a person's inbox.</p>
+      <p><strong>Use the three-tier model you already have.</strong> L-01 defines Major / Minor / Hotfix by branch, scope, comms and testing. Extend it to define <em>gate depth</em>: a Minor auto-promotes to DEV and QA on agent sign-off with one human gate at PROD; a Hotfix carries smoke coverage and a single approver; a Major keeps the full chain unchanged. Then make it enforceable with hooks rather than policy — allow, block, or ask, decided by release tier and target environment. That keeps every SOC-scoped change inside the documented approver chain while removing the approvals that carry no judgment.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Recommendation · add a third track</h2>
+  <p>v4 has two tracks: ENG builds and operates the release machinery, LEAD owns policy and customer comms. Neither one owns <strong>how viax writes software with agents</strong> — which is why the six foundation plays have nowhere to sit. Adding a third track is a non-destructive change: your four phases, initiative IDs and priorities all stay as they are.</p>
+
+  <div class="rev" style="margin-top:16px">
+    <div class="rev-item">
+      <div class="tag">DEV<i>new track</i></div>
+      <div class="body"><b>Development Track.</b> Owns the agent-assisted development loop inside the repos — context, policy, verification, gates, and the artifact chain from intent to merged diff. Human-in-the-loop on agent outputs that shape design and code. Runs in parallel with ENG and LEAD inside each phase, on the same priority scale.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>New initiatives</h2>
+  <p>Drafted in v4's format. IDs continue your existing sequence. Dependencies reference both new and existing items.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Track</th><th>Initiative</th><th>Description &amp; acceptance</th><th>Priority</th><th>Depends</th></tr>
+      </thead>
+      <tbody>
+        <tr class="phase-head"><td colspan="6">Phase 01 — Foundation <em>runs in parallel with the existing ENG and LEAD Phase 01 work</em></td></tr>
+        <tr>
+          <td class="id">D-01</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">CLAUDE.md per repo</td>
+          <td>One page per repository, checked in at root: build / test / lint commands, language and framework versions, architectural layers, naming conventions, and the failure patterns agents repeat. Generated with <code>/init</code>, then trimmed. Working rule: any mistake seen twice gets written down. Acceptance — every active repo has one, reviewed through PR, under one page.</td>
+          <td><span class="pill p-crit">Critical</span></td><td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="id">D-02</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Verification loop and test-file protection</td>
+          <td>A single command per repo that decides "done," declared in CLAUDE.md with its success string, so the agent iterates to green before a human reads the diff. Plus a hook that blocks agent edits to test files during a fix loop. Acceptance — bug fixes start from a failing test the agent reproduces and does not modify. <b>This is the guardrail E-04 needs before agents get write access to the suite.</b></td>
+          <td><span class="pill p-crit">Critical</span></td><td class="dep">D-01 E-20</td>
+        </tr>
+        <tr>
+          <td class="id">D-03</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Hooks and managed settings as the enforcement layer</td>
+          <td>Team-level hooks in <code>.claude/settings.json</code> under version control, plus managed settings distributed by MDM that engineers cannot override, with <code>allowManagedHooksOnly</code>. Gates inventoried by engineering leadership: production deploy, protected paths, release authorization, change management. Every block explains itself and names the route to approval. Acceptance — the v4 principle "approval gates are non-skippable for SOC-scoped changes" has a technical control behind it, and every hook decision is logged.</td>
+          <td><span class="pill p-crit">Critical</span></td><td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="id">D-04</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Skills as institutional policy</td>
+          <td>Encode the policies currently enforced inconsistently — SOC change control, GraphQL and API conventions, Determination and Configuration Model rules, security review requirements — as <code>.claude/skills/</code>, drafted from the policy owner's own documentation. Policy owner approves changes; engineers pick them up automatically. Distinct from the skills E-04 tests: these govern how viax code gets written. Acceptance — PR findings citing an encoded policy trend to zero.</td>
+          <td><span class="pill p-high">High</span></td><td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="id">D-05</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">intent.md as the capture artifact</td>
+          <td>The roadmap app and the existing epic template (Why / Customer Value / Scope / Risks / Tech) emit a committed <code>intent.md</code> into the product repo when an idea is promoted. Ideas and voting stay the front door; Git becomes the record. Non-engineers commit through Claude. Acceptance — time from first conversation to committed intent measured in hours; survival rate into Design tracked.</td>
+          <td><span class="pill p-high">High</span></td><td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="id">D-07</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Plan mode default, plan.md committed</td>
+          <td>Engineers start in plan mode with intent and spec as input; the plan names files that change, order of work, risks, and proof. Team interrogates it, then it is committed as <code>plan.md</code> and deviations update it in the same commit. Acceptance — first-pass merge rate and time from plan approval to merge tracked from Git; <b>plan.md doubles as the SOC change-evidence record alongside the Jira link.</b></td>
+          <td><span class="pill p-high">High</span></td><td class="dep">D-01</td>
+        </tr>
+
+        <tr class="phase-head"><td colspan="6">Phase 02 — Intelligence <em>where the build side starts paying for itself</em></td></tr>
+        <tr>
+          <td class="id">D-06</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">spec.md generated under skill constraints</td>
+          <td>Claude drafts a combined requirements and design spec from an approved intent, constrained by the D-04 skills, and flags anywhere policies contradict each other. Product owner validates it against the intent; flagged concerns route to the policy owner before engineering picks it up. Committed beside the intent. Run manually first, then as a CI-triggered job. Acceptance — spec revisions after build starts trend down.</td>
+          <td><span class="pill p-high">High</span></td><td class="dep">D-04 D-05</td>
+        </tr>
+        <tr>
+          <td class="id">D-09</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Agent evals in CI</td>
+          <td>20–50 real tasks from recent work, each paired with acceptance checks, run non-interactively in CI nightly and on any change to CLAUDE.md, a skill, or a hook. A configuration change that lowers the pass rate needs review to merge. Every production incident becomes a permanent eval, written by the team that owned it. <b>Supersedes E-17 and moves it out of Phase 04 — E-04 and E-11 are only trustworthy behind this gate.</b></td>
+          <td><span class="pill p-high">High</span></td><td class="dep">D-01 D-04</td>
+        </tr>
+        <tr>
+          <td class="id">D-10</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">AI in the PR review loop</td>
+          <td>A <code>REVIEW.md</code> defining review passes — bugs, security, compliance, design principles — with severity thresholds, capped nits, and generated files excluded. Claude reviews every PR against it within minutes; reviewers tag <code>@claude</code> to have comments resolved and pushed. Human attention moves to whether the change matches the plan and whether the risk is acceptable. Monthly tuning by rating findings. <b>v4 currently has one tech lead doing line-by-line review as the only quality gate between merge and cut — this is the throughput ceiling on "days from Done to live."</b></td>
+          <td><span class="pill p-crit">Critical</span></td><td class="dep">D-01 D-03</td>
+        </tr>
+        <tr>
+          <td class="id">D-11</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Agent identity, sandboxing, scoped credentials</td>
+          <td>Agent jobs run under their own identity in containers with network policy and short-lived tokens, holding no production credentials by default, so agent actions and engineer actions separate cleanly in the logs. Deploy, status and rollback are exposed as scoped MCP tools rather than shell scripts with embedded credentials. Acceptance — separation of duties demonstrable from logs alone; agent may act up to the production gate and cannot pass it.</td>
+          <td><span class="pill p-high">High</span></td><td class="dep">D-03</td>
+        </tr>
+
+        <tr class="phase-head"><td colspan="6">Phase 03 — Automation</td></tr>
+        <tr>
+          <td class="id">D-08</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Parallel sessions and subagents</td>
+          <td>Work split into file-independent tasks from the plan, each running in its own Git worktree on its own branch. Start at two to three sessions per engineer and scale only while review capacity holds. Recurring jobs — verification, review, migration checks — become reusable subagents in <code>.claude/agents/</code>. Repo-level hooks and permissions so sessions are not blocked on approval prompts. Acceptance — changes merged per engineer per week rises without rework rising.</td>
+          <td><span class="pill p-med">Medium</span></td><td class="dep">D-01 D-03 D-10</td>
+        </tr>
+        <tr>
+          <td class="id">D-12</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Rehearsed single-command rollback</td>
+          <td>Rollback becomes the most rehearsed path in the pipeline: one command, exercised on a schedule, not reconstructed under pressure. <b>Prerequisite for E-15 being worth anything — a rollback recommendation is only as good as the rollback.</b> Acceptance — rollback drilled per release tier; time-to-restore tracked in the DORA dashboard.</td>
+          <td><span class="pill p-high">High</span></td><td class="dep">E-13 D-11</td>
+        </tr>
+        <tr>
+          <td class="id">D-13</td><td><span class="pill t-dev">Dev</span></td>
+          <td class="nm">Agent telemetry via OpenTelemetry</td>
+          <td>Export Claude Code telemetry — hook decisions, gate wait times, concurrent sessions per engineer, eval pass rates — into the same dashboard as the DORA metrics. Gives L-05 and L-10 the AI-side numbers DORA cannot see, above all <em>time spent waiting at each approval gate</em>, which is the measurement that tells you whether the gate redesign worked. Acceptance — quarterly process health review reads both sets from one dashboard.</td>
+          <td><span class="pill p-med">Medium</span></td><td class="dep">D-03 L-05</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Revisions to existing initiatives</h2>
+  <div class="rev">
+    <div class="rev-item">
+      <div class="tag">E-04<i>add dependency</i></div>
+      <div class="body">Testing agents that "update existing tests when code changes" is the exact failure mode the playbook warns about — an agent repairing the test instead of the code. <b>Add D-01 and D-02 as dependencies</b> so the verification command and the test-file protection hook exist before agents get write access to the suite. No change to scope or priority.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">E-17<i>supersede</i></div>
+      <div class="body">Agent evals are currently Medium in Phase 04. But CLAUDE.md, skills and hooks <b>are</b> agent configuration, and E-04's testing agents and E-11's CI gates inherit whatever quality those have. <b>Fold E-17 into D-09 and move it to Phase 02, High.</b> Keep the named engineering owner per agent and the "agent on call" concept — those are good and the course has no equivalent.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">E-14<i>close the loop</i></div>
+      <div class="body">Post-deploy correlation currently ends at "alerts route to the responsible team" — a human handoff, so the loop does not actually close. <b>Have it emit an <code>intent.md</code> into the triage queue instead</b>, carrying the anomaly, the evidence, the affected systems and the open questions, so a production signal enters the same pipeline as any other work. Add a versioned <code>bands.yaml</code> with tiered response: 1σ logs, 2σ diagnoses read-only, 3σ may open a PR or trigger a pre-approved runbook. Depends on D-05.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">E-15<i>re-sequence</i></div>
+      <div class="body">Automated rollback recommendation is marked Future. <b>Raise to High once D-12 lands</b> — the recommendation engine is cheap and the rehearsed rollback is the expensive half. Human approval stays.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">L-01<i>extend</i></div>
+      <div class="body">The three-tier model defines branch, scope, comms and testing per tier. <b>Extend it to define gate depth per tier</b>, and make the definition executable through D-03's hooks. This is the single highest-leverage edit in the plan: it is the mechanism that lets L-10's ten-releases-a-day target coexist with non-skippable SOC gates.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">L-03<i>reframe</i></div>
+      <div class="body">Definition of Done currently requires a linked Jira release object. <b>Define it as the artifact chain</b> — intent → spec → plan → diff → review → incident record — with Git as the system of record and Jira as the reporting view over it. Same governance, fewer places for the truth to live.</div>
+    </div>
+    <div class="rev-item">
+      <div class="tag">SOC<i>reframe</i></div>
+      <div class="body">v4 proposes building "an immutable audit log per release." Most of that evidence set already exists once the artifact chain does: <b>Git history gives author, timestamp, reviewer and diff; PR metadata gives the approver chain; the hook decision log gives every gate outcome; the OTel export gives the agent actions.</b> Scope the custom build down to what those four cannot produce, and the SOC story gets stronger and cheaper at once.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Suggested order</h2>
+  <p>Priority stays independent of phase, as in v4. This is only about what has to exist before something else is trustworthy.</p>
+  <div class="order">
+    <div class="order-step">
+      <div class="when">First · days</div>
+      <div class="what"><b>D-01, D-02, D-03.</b> One repo, end to end: CLAUDE.md, a verification command, hooks in managed settings. Small enough to finish inside a sprint, and it is what makes E-04 and E-20 safe to turn on.</div>
+    </div>
+    <div class="order-step">
+      <div class="when">Alongside</div>
+      <div class="what"><b>Existing Phase 01 ENG and LEAD work, unchanged.</b> E-00, E-01, E-02, E-20, L-01, L-02, L-11 are all correctly placed and independently valuable. L-01 picks up the gate-depth extension.</div>
+    </div>
+    <div class="order-step">
+      <div class="when">Then</div>
+      <div class="what"><b>D-04, D-05, D-09.</b> Encode the policies, wire intent capture into the repos, stand up the eval suite. D-09 before E-11's CI gates go live, so the gates are measured rather than assumed.</div>
+    </div>
+    <div class="order-step">
+      <div class="when">Then</div>
+      <div class="what"><b>D-10, D-06, D-07, D-11.</b> AI review is the item most directly aimed at your stated target of days from Done to live — it removes the review queue rather than coordinating around it.</div>
+    </div>
+    <div class="order-step">
+      <div class="when">Last</div>
+      <div class="what"><b>D-08, D-12, D-13.</b> Parallelism only after review capacity is real; rollback drills and telemetry alongside E-13 and L-05.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What v4 has that the playbook does not</h2>
+  <p>The course is written for a generic enterprise. Several parts of your plan have no counterpart in it and should not be diluted.</p>
+  <div class="keep">
+    <div><b>E-00 Release Engineer orchestrator.</b> The course has no event-bus conductor; its stages are triggered by committed artifacts. Yours is a real improvement for a multi-tenant release.</div>
+    <div><b>The per-customer layer.</b> E-03, E-06, E-21, E-22, E-23, L-06. The playbook stops at the deploy boundary and has nothing on customer impact, UAT that travels, or downtime expectations.</div>
+    <div><b>Three-tier release model and the Comm SLA matrix.</b> L-01 and L-02 have no equivalent play and are what let the gate redesign above be safe.</div>
+    <div><b>The deprecation program.</b> E-10, E-16, L-08 — a tracked runway with usage signal and a dedicated cleanup release. Nothing like it in the course.</div>
+    <div><b>SOC framing as a side effect of process.</b> The playbook treats governance as constraint; v4 treats evidence as output. That is the better framing — it just needs Git and hooks doing the work.</div>
+    <div><b>Documentation agents.</b> E-18 and E-19. The course never addresses technical docs or customer how-to guides at all.</div>
+  </div>
+</section>
+
+<footer>
+  <span>viax Release Pipeline · v4 gap analysis · internal draft</span>
+  <span>Against Anthropic AI-Native SDLC Playbook, 14 lessons</span>
+</footer>
+</body>
+</html>

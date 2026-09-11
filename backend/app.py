@@ -1216,6 +1216,163 @@ def health():
     return jsonify({"status": "ok", "version": "1.0.0"})
 
 
+# ── Marketing Blitz ────────────────────────────────────────────────────
+# A reusable launch-campaign template. Each blitz is a row in `blitzes`,
+# addressed by slug (/blitz/rmb). The narrative scaffolding lives in the
+# frontend page config; everything typed on the page is stored here.
+
+def _blitz_by_slug(slug):
+    res = supabase.table("blitzes").select("*").eq("slug", slug).limit(1).execute()
+    return res.data[0] if res.data else None
+
+
+def _blitz_payload(blitz):
+    fields = supabase.table("blitz_fields").select("*").eq("blitz_id", blitz["id"]).execute()
+    meetings = (
+        supabase.table("blitz_meetings").select("*")
+        .eq("blitz_id", blitz["id"]).order("position").execute()
+    )
+    decks = supabase.table("blitz_decks").select("*").eq("blitz_id", blitz["id"]).execute()
+    return {
+        "blitz":    blitz,
+        "fields":   {f["field_key"]: f["value"] for f in (fields.data or [])},
+        "meetings": meetings.data or [],
+        "decks":    decks.data or [],
+    }
+
+
+@app.route("/api/blitz/<slug>", methods=["GET"])
+def get_blitz(slug):
+    blitz = _blitz_by_slug(slug)
+    if not blitz:
+        return jsonify({"error": "blitz not found", "slug": slug}), 404
+    return jsonify(_blitz_payload(blitz))
+
+
+@app.route("/api/blitz/<slug>/init", methods=["POST"])
+def init_blitz(slug):
+    """Idempotent bootstrap. Creates the blitz row if it is missing and seeds
+    its meetings from the page config the first time only. Safe to call on
+    every page load — existing data is never overwritten.
+
+    Body: { "name", "feature", "meetings": [ {name, audience, phase, angle, position}, ... ] }
+    """
+    body = request.json or {}
+    blitz = _blitz_by_slug(slug)
+
+    if not blitz:
+        row = {
+            "id":         str(uuid.uuid4()),
+            "slug":       slug,
+            "name":       body.get("name", slug),
+            "feature":    body.get("feature", ""),
+            "updated_at": now(),
+        }
+        res = supabase.table("blitzes").insert(row).execute()
+        blitz = res.data[0] if res.data else row
+
+    existing = supabase.table("blitz_meetings").select("id").eq("blitz_id", blitz["id"]).limit(1).execute()
+    if not existing.data:
+        seeds = body.get("meetings") or []
+        rows = [{
+            "id":       str(uuid.uuid4()),
+            "blitz_id": blitz["id"],
+            "phase":    m.get("phase", "field"),
+            "name":     m.get("name", ""),
+            "audience": m.get("audience", "client"),
+            "angle":    m.get("angle", ""),
+            "sharers":  "",
+            "position": int(m.get("position", i)),
+        } for i, m in enumerate(seeds)]
+        if rows:
+            supabase.table("blitz_meetings").insert(rows).execute()
+
+    return jsonify(_blitz_payload(blitz))
+
+
+@app.route("/api/blitz/<slug>/fields", methods=["PUT"])
+def set_blitz_field(slug):
+    """Upsert a single field value. Body: { "key", "value" }"""
+    blitz = _blitz_by_slug(slug)
+    if not blitz:
+        return jsonify({"error": "blitz not found"}), 404
+    body = request.json or {}
+    key = body.get("key")
+    if not key:
+        return jsonify({"error": "key is required"}), 400
+    row = {
+        "blitz_id":   blitz["id"],
+        "field_key":  key,
+        "value":      body.get("value") or "",
+        "updated_at": now(),
+    }
+    supabase.table("blitz_fields").upsert(row, on_conflict="blitz_id,field_key").execute()
+    return jsonify({"ok": True, "key": key})
+
+
+@app.route("/api/blitz/<slug>/meetings", methods=["POST"])
+def upsert_blitz_meeting(slug):
+    blitz = _blitz_by_slug(slug)
+    if not blitz:
+        return jsonify({"error": "blitz not found"}), 404
+    body = request.json or {}
+    row = {
+        "id":         body.get("id") or str(uuid.uuid4()),
+        "blitz_id":   blitz["id"],
+        "phase":      body.get("phase", "field"),
+        "name":       body.get("name", ""),
+        "audience":   body.get("audience", "client"),
+        "angle":      body.get("angle", ""),
+        "meet_at":    body.get("meetAt") or None,
+        "sharers":    body.get("sharers", ""),
+        "position":   int(body.get("position", 0)),
+        "updated_at": now(),
+    }
+    res = supabase.table("blitz_meetings").upsert(row, on_conflict="id").execute()
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/blitz/meetings/<meeting_id>", methods=["DELETE"])
+def delete_blitz_meeting(meeting_id):
+    supabase.table("blitz_meetings").delete().eq("id", meeting_id).execute()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/blitz/<slug>/decks", methods=["POST"])
+def upsert_blitz_deck(slug):
+    """Store one audience deck. `content` is the deck's raw HTML so the whole
+    team sees the same file rather than a per-browser copy."""
+    blitz = _blitz_by_slug(slug)
+    if not blitz:
+        return jsonify({"error": "blitz not found"}), 404
+    body = request.json or {}
+    audience = body.get("audience")
+    if audience not in ("client", "partner", "agency"):
+        return jsonify({"error": "audience must be client, partner or agency"}), 400
+    content = body.get("content") or ""
+    if len(content) > 4_000_000:
+        return jsonify({"error": "deck is larger than 4MB"}), 413
+    row = {
+        "blitz_id":   blitz["id"],
+        "audience":   audience,
+        "file_name":  body.get("fileName", ""),
+        "link":       body.get("link", ""),
+        "content":    content,
+        "updated_at": now(),
+    }
+    res = supabase.table("blitz_decks").upsert(row, on_conflict="blitz_id,audience").execute()
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/blitz/<slug>/decks/<audience>", methods=["DELETE"])
+def delete_blitz_deck(slug, audience):
+    blitz = _blitz_by_slug(slug)
+    if not blitz:
+        return jsonify({"error": "blitz not found"}), 404
+    supabase.table("blitz_decks").delete().eq("blitz_id", blitz["id"]).eq("audience", audience).execute()
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")

@@ -110,4 +110,19 @@ export const api = {
     accept:   (id, body)   => request('POST',  `/api/suggestions/${id}/accept`,  body || {}),
     dismiss:  (id)         => request('POST',  `/api/suggestions/${id}/dismiss`),
   },
+
+  // ── Marketing Blitz ──────────────────────────────────────────────────
+  // A blitz is one campaign (e.g. /blitz/rmb). `init` is idempotent: it
+  // creates the blitz row and seeds its meetings the first time only, then
+  // returns the whole payload — fields, meetings and decks.
+
+  blitz: {
+    get:           (slug)              => request('GET',    `/api/blitz/${slug}`),
+    init:          (slug, seed)        => request('POST',   `/api/blitz/${slug}/init`, seed || {}),
+    setField:      (slug, key, value)  => request('PUT',    `/api/blitz/${slug}/fields`, { key, value }),
+    upsertMeeting: (slug, meeting)     => request('POST',   `/api/blitz/${slug}/meetings`, meeting),
+    deleteMeeting: (id)                => request('DELETE', `/api/blitz/meetings/${id}`),
+    upsertDeck:    (slug, deck)        => request('POST',   `/api/blitz/${slug}/decks`, deck),
+    deleteDeck:    (slug, audience)    => request('DELETE', `/api/blitz/${slug}/decks/${audience}`),
+  },
 }

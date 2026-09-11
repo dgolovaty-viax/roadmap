@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 
 function ViaxLogo() {
   return (
@@ -23,6 +24,81 @@ const navLinkClass = ({ isActive }) =>
       ? 'text-[#90E9B8]'
       : 'text-[rgba(255,255,255,0.65)] hover:text-white'
   }`
+
+// ── Dropdown nav group ─────────────────────────────────────────────────
+// Used by "Marketing Blitz". Closes on outside click, Escape, or navigation.
+
+function NavDropdown({ label, basePath, items }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const location = useLocation()
+  const active = location.pathname.startsWith(basePath)
+
+  useEffect(() => { setOpen(false) }, [location.pathname])
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const onKey  = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`text-sm transition-colors duration-150 flex items-center gap-1.5 ${
+          active || open ? 'text-[#90E9B8]' : 'text-[rgba(255,255,255,0.65)] hover:text-white'
+        }`}
+      >
+        {label}
+        <svg width="9" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full mt-2 min-w-[190px] rounded-lg border border-[#383838] bg-[#1E1E1E] py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.45)]"
+        >
+          {items.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              role="menuitem"
+              className={({ isActive }) =>
+                `block px-4 py-2 text-sm transition-colors duration-150 ${
+                  isActive
+                    ? 'text-[#90E9B8]'
+                    : 'text-[rgba(255,255,255,0.72)] hover:text-white hover:bg-[#2A2A2A]'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Campaigns in the Marketing Blitz dropdown. To add the next one: append an
+// item here, add a BLITZ_CONTENT entry in src/pages/BlitzPage.jsx, and the
+// route resolves automatically via /blitz/:slug.
+const BLITZ_ITEMS = [
+  { to: '/blitz/rmb', label: 'Blitz: RMB' },
+]
 
 export default function Nav() {
   return (
@@ -67,6 +143,7 @@ export default function Nav() {
         <NavLink to="/priority-board" className={navLinkClass}>
           Priority Board
         </NavLink>
+        <NavDropdown label="Marketing Blitz" basePath="/blitz" items={BLITZ_ITEMS} />
       </div>
     </nav>
   )
