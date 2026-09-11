@@ -1221,6 +1221,31 @@ def health():
 # addressed by slug (/blitz/rmb). The narrative scaffolding lives in the
 # frontend page config; everything typed on the page is stored here.
 
+def _sb(build, attempts=3):
+    """Run a Supabase query, retrying transient connection drops.
+
+    Supabase periodically terminates the pooled HTTP/2 connection with a
+    GOAWAY. On a reused client the *next* call then fails with
+    ConnectionTerminated, so single-query endpoints usually survive while a
+    handler making several sequential queries reliably breaks. Rebuilding the
+    query and retrying re-establishes the connection.
+
+    `build` is a zero-arg callable returning the query builder, e.g.
+        _sb(lambda: supabase.table("blitzes").select("*"))
+    """
+    import time
+    last = None
+    for attempt in range(attempts):
+        try:
+            return build().execute()
+        except Exception as e:                      # noqa: BLE001
+            last = e
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.2 * (attempt + 1))
+    raise last                                      # pragma: no cover
+
+
 def _blitz_errors(fn):
     """Return the real reason a blitz call failed instead of Flask's generic
     500 HTML page. Missing tables and RLS rejections both surface here, so the
@@ -1250,7 +1275,7 @@ def diag_blitz():
     out = {}
     for t in ("blitzes", "blitz_fields", "blitz_meetings", "blitz_decks"):
         try:
-            supabase.table(t).select("*").limit(1).execute()
+            _sb(lambda t=t: supabase.table(t).select("*").limit(1))
             out[t] = "ok"
         except Exception as e:                      # noqa: BLE001
             out[t] = getattr(e, "message", None) or str(e)
@@ -1259,17 +1284,15 @@ def diag_blitz():
 
 
 def _blitz_by_slug(slug):
-    res = supabase.table("blitzes").select("*").eq("slug", slug).limit(1).execute()
+    res = _sb(lambda: supabase.table("blitzes").select("*").eq("slug", slug).limit(1))
     return res.data[0] if res.data else None
 
 
 def _blitz_payload(blitz):
-    fields = supabase.table("blitz_fields").select("*").eq("blitz_id", blitz["id"]).execute()
-    meetings = (
-        supabase.table("blitz_meetings").select("*")
-        .eq("blitz_id", blitz["id"]).order("position").execute()
-    )
-    decks = supabase.table("blitz_decks").select("*").eq("blitz_id", blitz["id"]).execute()
+    fields = _sb(lambda: supabase.table("blitz_fields").select("*").eq("blitz_id", blitz["id"]))
+    meetings = _sb(lambda: supabase.table("blitz_meetings").select("*")
+                   .eq("blitz_id", blitz["id"]).order("position"))
+    decks = _sb(lambda: supabase.table("blitz_decks").select("*").eq("blitz_id", blitz["id"]))
     return {
         "blitz":    blitz,
         "fields":   {f["field_key"]: f["value"] for f in (fields.data or [])},
@@ -1307,10 +1330,10 @@ def init_blitz(slug):
             "feature":    body.get("feature", ""),
             "updated_at": now(),
         }
-        res = supabase.table("blitzes").insert(row).execute()
+        res = _sb(lambda: supabase.table("blitzes").insert(row))
         blitz = res.data[0] if res.data else row
 
-    existing = supabase.table("blitz_meetings").select("id").eq("blitz_id", blitz["id"]).limit(1).execute()
+    existing = _sb(lambda: supabase.table("blitz_meetings").select("id").eq("blitz_id", blitz["id"]).limit(1))
     if not existing.data:
         seeds = body.get("meetings") or []
         rows = [{
@@ -1324,7 +1347,7 @@ def init_blitz(slug):
             "position": int(m.get("position", i)),
         } for i, m in enumerate(seeds)]
         if rows:
-            supabase.table("blitz_meetings").insert(rows).execute()
+            _sb(lambda: supabase.table("blitz_meetings").insert(rows))
 
     return jsonify(_blitz_payload(blitz))
 
@@ -1346,7 +1369,7 @@ def set_blitz_field(slug):
         "value":      body.get("value") or "",
         "updated_at": now(),
     }
-    supabase.table("blitz_fields").upsert(row, on_conflict="blitz_id,field_key").execute()
+    _sb(lambda: supabase.table("blitz_fields").upsert(row, on_conflict="blitz_id,field_key"))
     return jsonify({"ok": True, "key": key})
 
 
@@ -1369,14 +1392,14 @@ def upsert_blitz_meeting(slug):
         "position":   int(body.get("position", 0)),
         "updated_at": now(),
     }
-    res = supabase.table("blitz_meetings").upsert(row, on_conflict="id").execute()
+    res = _sb(lambda: supabase.table("blitz_meetings").upsert(row, on_conflict="id"))
     return jsonify(res.data[0] if res.data else row), 200
 
 
 @app.route("/api/blitz/meetings/<meeting_id>", methods=["DELETE"])
 @_blitz_errors
 def delete_blitz_meeting(meeting_id):
-    supabase.table("blitz_meetings").delete().eq("id", meeting_id).execute()
+    _sb(lambda: supabase.table("blitz_meetings").delete().eq("id", meeting_id))
     return jsonify({"ok": True})
 
 
@@ -1403,7 +1426,7 @@ def upsert_blitz_deck(slug):
         "content":    content,
         "updated_at": now(),
     }
-    res = supabase.table("blitz_decks").upsert(row, on_conflict="blitz_id,audience").execute()
+    res = _sb(lambda: supabase.table("blitz_decks").upsert(row, on_conflict="blitz_id,audience"))
     return jsonify(res.data[0] if res.data else row), 200
 
 
@@ -1413,7 +1436,7 @@ def delete_blitz_deck(slug, audience):
     blitz = _blitz_by_slug(slug)
     if not blitz:
         return jsonify({"error": "blitz not found"}), 404
-    supabase.table("blitz_decks").delete().eq("blitz_id", blitz["id"]).eq("audience", audience).execute()
+    _sb(lambda: supabase.table("blitz_decks").delete().eq("blitz_id", blitz["id"]).eq("audience", audience))
     return jsonify({"ok": True})
 
 
