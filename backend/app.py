@@ -1221,6 +1221,43 @@ def health():
 # addressed by slug (/blitz/rmb). The narrative scaffolding lives in the
 # frontend page config; everything typed on the page is stored here.
 
+def _blitz_errors(fn):
+    """Return the real reason a blitz call failed instead of Flask's generic
+    500 HTML page. Missing tables and RLS rejections both surface here, so the
+    frontend can show something actionable."""
+    from functools import wraps
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:                      # noqa: BLE001
+            detail = getattr(e, "message", None) or str(e)
+            app.logger.exception("blitz route failed: %s", detail)
+            return jsonify({
+                "error":  "blitz request failed",
+                "detail": detail,
+                "type":   type(e).__name__,
+                "hint":   "If this says the relation does not exist, apply "
+                          "backend/migrations/006_marketing_blitz.sql in the Supabase SQL editor.",
+            }), 500
+    return wrapper
+
+
+@app.route("/api/blitz/_diag", methods=["GET"])
+def diag_blitz():
+    """Report which blitz tables the backend can actually see."""
+    out = {}
+    for t in ("blitzes", "blitz_fields", "blitz_meetings", "blitz_decks"):
+        try:
+            supabase.table(t).select("*").limit(1).execute()
+            out[t] = "ok"
+        except Exception as e:                      # noqa: BLE001
+            out[t] = getattr(e, "message", None) or str(e)
+    out["all_present"] = all(v == "ok" for k, v in out.items() if k != "all_present")
+    return jsonify(out)
+
+
 def _blitz_by_slug(slug):
     res = supabase.table("blitzes").select("*").eq("slug", slug).limit(1).execute()
     return res.data[0] if res.data else None
@@ -1242,6 +1279,7 @@ def _blitz_payload(blitz):
 
 
 @app.route("/api/blitz/<slug>", methods=["GET"])
+@_blitz_errors
 def get_blitz(slug):
     blitz = _blitz_by_slug(slug)
     if not blitz:
@@ -1250,6 +1288,7 @@ def get_blitz(slug):
 
 
 @app.route("/api/blitz/<slug>/init", methods=["POST"])
+@_blitz_errors
 def init_blitz(slug):
     """Idempotent bootstrap. Creates the blitz row if it is missing and seeds
     its meetings from the page config the first time only. Safe to call on
@@ -1291,6 +1330,7 @@ def init_blitz(slug):
 
 
 @app.route("/api/blitz/<slug>/fields", methods=["PUT"])
+@_blitz_errors
 def set_blitz_field(slug):
     """Upsert a single field value. Body: { "key", "value" }"""
     blitz = _blitz_by_slug(slug)
@@ -1311,6 +1351,7 @@ def set_blitz_field(slug):
 
 
 @app.route("/api/blitz/<slug>/meetings", methods=["POST"])
+@_blitz_errors
 def upsert_blitz_meeting(slug):
     blitz = _blitz_by_slug(slug)
     if not blitz:
@@ -1333,12 +1374,14 @@ def upsert_blitz_meeting(slug):
 
 
 @app.route("/api/blitz/meetings/<meeting_id>", methods=["DELETE"])
+@_blitz_errors
 def delete_blitz_meeting(meeting_id):
     supabase.table("blitz_meetings").delete().eq("id", meeting_id).execute()
     return jsonify({"ok": True})
 
 
 @app.route("/api/blitz/<slug>/decks", methods=["POST"])
+@_blitz_errors
 def upsert_blitz_deck(slug):
     """Store one audience deck. `content` is the deck's raw HTML so the whole
     team sees the same file rather than a per-browser copy."""
@@ -1365,6 +1408,7 @@ def upsert_blitz_deck(slug):
 
 
 @app.route("/api/blitz/<slug>/decks/<audience>", methods=["DELETE"])
+@_blitz_errors
 def delete_blitz_deck(slug, audience):
     blitz = _blitz_by_slug(slug)
     if not blitz:
