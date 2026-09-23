@@ -13,6 +13,7 @@ import SimplificationPage from '@/pages/SimplificationPage'
 import SupportPage from '@/pages/SupportPage'
 import KanbanPage from '@/pages/KanbanPage'
 import BlitzPage from '@/pages/BlitzPage'
+import PressReleasesPage from '@/pages/PressReleasesPage'
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/support" element={<SupportPage />} />
             <Route path="/priority-board" element={<KanbanPage />} />
             <Route path="/blitz/:slug" element={<BlitzPage />} />
+            <Route path="/press-releases" element={<PressReleasesPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>

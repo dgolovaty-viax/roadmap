@@ -125,4 +125,18 @@ export const api = {
     upsertDeck:    (slug, deck)        => request('POST',   `/api/blitz/${slug}/decks`, deck),
     deleteDeck:    (slug, audience)    => request('DELETE', `/api/blitz/${slug}/decks/${audience}`),
   },
+
+  // ── Press Releases ───────────────────────────────────────────────────
+  // Swimlane board: one release per lane, steps across the top. `init` is
+  // idempotent and seeds the board from the page config on first load.
+
+  pressReleases: {
+    list:       ()                 => request('GET',    '/api/press-releases'),
+    init:       (seed)             => request('POST',   '/api/press-releases/init', seed || {}),
+    upsert:     (release)          => request('POST',   '/api/press-releases', release),
+    remove:     (id)               => request('DELETE', `/api/press-releases/${id}`),
+    move:       (id, stepKey)      => request('POST',   `/api/press-releases/${id}/move`, { stepKey }),
+    upsertItem: (releaseId, item)  => request('POST',   `/api/press-releases/${releaseId}/items`, item),
+    deleteItem: (itemId)           => request('DELETE', `/api/press-release-items/${itemId}`),
+  },
 }

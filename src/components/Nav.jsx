@@ -143,6 +143,9 @@ export default function Nav() {
         <NavLink to="/priority-board" className={navLinkClass}>
           Priority Board
         </NavLink>
+        <NavLink to="/press-releases" className={navLinkClass}>
+          Press Releases
+        </NavLink>
         <NavDropdown label="Marketing Blitz" basePath="/blitz" items={BLITZ_ITEMS} />
       </div>
     </nav>

@@ -1269,6 +1269,10 @@ def _blitz_errors(fn):
     return wrapper
 
 
+# The same wrapper is useful beyond the blitz routes.
+_api_errors = _blitz_errors
+
+
 @app.route("/api/blitz/_diag", methods=["GET"])
 def diag_blitz():
     """Report which blitz tables the backend can actually see."""
@@ -1437,6 +1441,148 @@ def delete_blitz_deck(slug, audience):
     if not blitz:
         return jsonify({"error": "blitz not found"}), 404
     _sb(lambda: supabase.table("blitz_decks").delete().eq("blitz_id", blitz["id"]).eq("audience", audience))
+    return jsonify({"ok": True})
+
+
+# ── Press Releases ─────────────────────────────────────────────────────
+# A swimlane board tracking each press release from candidate through to
+# LinkedIn amplification. Steps live in the frontend (PR_STEPS); a release
+# stores which step it currently sits in.
+
+def _pr_payload():
+    releases = _sb(lambda: supabase.table("press_releases").select("*")
+                   .eq("archived", False).order("position"))
+    items = _sb(lambda: supabase.table("pr_items").select("*").order("created_at"))
+    return {"releases": releases.data or [], "items": items.data or []}
+
+
+@app.route("/api/press-releases", methods=["GET"])
+@_api_errors
+def list_press_releases():
+    return jsonify(_pr_payload())
+
+
+@app.route("/api/press-releases/init", methods=["POST"])
+@_api_errors
+def init_press_releases():
+    """Idempotent bootstrap. Seeds the board from the page config the first
+    time only; existing rows are never overwritten.
+
+    Body: { "releases": [ {client, topic, viaxOwners, clientOwners, stepKey,
+                           expectedDate, position, seedItems:[{kind,...}]}, ... ] }
+    """
+    body = request.json or {}
+    existing = _sb(lambda: supabase.table("press_releases").select("id").limit(1))
+    if existing.data:
+        return jsonify(_pr_payload())
+
+    for i, r in enumerate(body.get("releases") or []):
+        rid = str(uuid.uuid4())
+        _sb(lambda rid=rid, r=r, i=i: supabase.table("press_releases").insert({
+            "id":            rid,
+            "client":        r.get("client", ""),
+            "topic":         r.get("topic", ""),
+            "viax_owners":   r.get("viaxOwners", ""),
+            "client_owners": r.get("clientOwners", ""),
+            "step_key":      r.get("stepKey", "candidate"),
+            "expected_date": r.get("expectedDate") or None,
+            "position":      int(r.get("position", i)),
+        }))
+        seeds = r.get("seedItems") or []
+        if seeds:
+            rows = [{
+                "id":         str(uuid.uuid4()),
+                "release_id": rid,
+                "kind":       s.get("kind", "comment"),
+                "title":      s.get("title", ""),
+                "url":        s.get("url", ""),
+                "body":       s.get("body", ""),
+                "author":     s.get("author", ""),
+            } for s in seeds]
+            _sb(lambda rows=rows: supabase.table("pr_items").insert(rows))
+
+    return jsonify(_pr_payload())
+
+
+@app.route("/api/press-releases", methods=["POST"])
+@_api_errors
+def upsert_press_release():
+    body = request.json or {}
+    row = {
+        "id":            body.get("id") or str(uuid.uuid4()),
+        "client":        body.get("client", ""),
+        "topic":         body.get("topic", ""),
+        "viax_owners":   body.get("viaxOwners", ""),
+        "client_owners": body.get("clientOwners", ""),
+        "step_key":      body.get("stepKey", "candidate"),
+        "expected_date": body.get("expectedDate") or None,
+        "position":      int(body.get("position", 0)),
+        "archived":      bool(body.get("archived", False)),
+        "updated_at":    now(),
+    }
+    res = _sb(lambda: supabase.table("press_releases").upsert(row, on_conflict="id"))
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/press-releases/<release_id>", methods=["DELETE"])
+@_api_errors
+def delete_press_release(release_id):
+    _sb(lambda: supabase.table("press_releases").delete().eq("id", release_id))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/press-releases/<release_id>/move", methods=["POST"])
+@_api_errors
+def move_press_release(release_id):
+    """Drop a card into a different step. Body: { "stepKey": "draft" }"""
+    body = request.json or {}
+    step = body.get("stepKey")
+    if not step:
+        return jsonify({"error": "stepKey is required"}), 400
+    _sb(lambda: supabase.table("press_releases")
+        .update({"step_key": step, "updated_at": now()}).eq("id", release_id))
+    return jsonify({"ok": True, "stepKey": step})
+
+
+@app.route("/api/press-releases/<release_id>/items", methods=["POST"])
+@_api_errors
+def upsert_pr_item(release_id):
+    """Add or update one card item — content, link, attachment or comment.
+
+    Attachments arrive as base64 in `data`; cap them so a stray upload cannot
+    fill the Supabase free tier.
+    """
+    body = request.json or {}
+    kind = body.get("kind")
+    if kind not in ("content", "link", "attachment", "comment"):
+        return jsonify({"error": "kind must be content, link, attachment or comment"}), 400
+
+    data = body.get("data") or ""
+    if len(data) > 4_200_000:                       # ~3MB once base64 is decoded
+        return jsonify({"error": "attachment is larger than 3MB"}), 413
+
+    row = {
+        "id":         body.get("id") or str(uuid.uuid4()),
+        "release_id": release_id,
+        "kind":       kind,
+        "title":      body.get("title", ""),
+        "url":        body.get("url", ""),
+        "body":       body.get("body", ""),
+        "file_name":  body.get("fileName", ""),
+        "mime_type":  body.get("mimeType", ""),
+        "size_bytes": int(body.get("sizeBytes", 0)),
+        "data":       data,
+        "author":     body.get("author", ""),
+        "updated_at": now(),
+    }
+    res = _sb(lambda: supabase.table("pr_items").upsert(row, on_conflict="id"))
+    return jsonify(res.data[0] if res.data else row), 200
+
+
+@app.route("/api/press-release-items/<item_id>", methods=["DELETE"])
+@_api_errors
+def delete_pr_item(item_id):
+    _sb(lambda: supabase.table("pr_items").delete().eq("id", item_id))
     return jsonify({"ok": True})
 
 

@@ -7,6 +7,7 @@ A product roadmap tool for the viax team. It has five main sections:
 - **North Star** — vision and OKR tracking.
 - **Ideas** — idea cards with tags, tag filtering, and a structured voting system to promote ideas into planning epics.
 - **Sessions** — meeting/session notes.
+- **Press Releases** — a swimlane board tracking each press release or customer case study from candidate through to LinkedIn amplification. Steps run across the top (defined in `PR_STEPS` in `src/pages/PressReleasesPage.jsx`), one lane per release, and each card holds content, links, file attachments and comments.
 - **Marketing Blitz** — a reusable launch-campaign template. One page renders any blitz (`/blitz/:slug`); the first is **Blitz: RMB** at `/blitz/rmb`. Six phases from concepts to implementation showcase, with dates, owners' commitments, audience decks and LinkedIn post review all persisted to Supabase.
 
 Live at: **https://roadmap-viax.vercel.app**
@@ -111,6 +112,37 @@ Live at: **https://roadmap-viax.vercel.app**
 | idea_ids | uuid[] | array of up to 5 idea IDs |
 | created_at | timestamptz | |
 
+
+### `press_releases` (Press Releases board)
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| client | text | company the release is about — the lane title |
+| topic | text | what the release is about |
+| viax_owners | text | who owns it on our side |
+| client_owners | text | who signs off on theirs |
+| step_key | text | matches a key in `PR_STEPS`; moving the card updates this |
+| expected_date | date | nullable; drives the date pill and the late/soon colouring |
+| position | integer | lane order top to bottom |
+| archived | boolean | hidden from the board when true |
+
+Seeded from `SEED` in the page on first load (`/api/press-releases/init`, idempotent).
+
+### `pr_items`
+Everything hanging off a release card, discriminated by `kind`:
+`content` (the body, one per release), `link`, `attachment`, `comment`.
+
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| release_id | uuid | FK → press_releases, cascades on delete |
+| kind | text | `content` \| `link` \| `attachment` \| `comment` |
+| title / url | text | links |
+| body | text | content and comments |
+| file_name / mime_type / size_bytes / data | text/int | attachments; `data` is base64, capped at 3MB by the backend |
+| author | text | comments |
+
+---
 
 ### `blitzes` (Marketing Blitz)
 | column | type | notes |
