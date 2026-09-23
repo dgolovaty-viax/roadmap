@@ -136,6 +136,7 @@ export const api = {
     upsert:     (release)          => request('POST',   '/api/press-releases', release),
     remove:     (id)               => request('DELETE', `/api/press-releases/${id}`),
     move:       (id, stepKey)      => request('POST',   `/api/press-releases/${id}/move`, { stepKey }),
+    reorder:    (positions)        => request('POST',   '/api/press-releases/reorder', { positions }),
     upsertItem: (releaseId, item)  => request('POST',   `/api/press-releases/${releaseId}/items`, item),
     deleteItem: (itemId)           => request('DELETE', `/api/press-release-items/${itemId}`),
   },

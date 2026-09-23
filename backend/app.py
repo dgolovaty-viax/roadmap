@@ -1524,6 +1524,22 @@ def upsert_press_release():
     return jsonify(res.data[0] if res.data else row), 200
 
 
+@app.route("/api/press-releases/reorder", methods=["POST"])
+@_api_errors
+def reorder_press_releases():
+    """Persist a new lane order after a drag — this IS the force ranking.
+
+    Body: { "positions": [ { "id", "position" }, ... ] }
+    Only the lanes whose position actually changed need to be sent.
+    """
+    body = request.json or {}
+    for p in body.get("positions") or []:
+        _sb(lambda p=p: supabase.table("press_releases")
+            .update({"position": int(p.get("position", 0)), "updated_at": now()})
+            .eq("id", p.get("id")))
+    return jsonify({"ok": True})
+
+
 @app.route("/api/press-releases/<release_id>", methods=["DELETE"])
 @_api_errors
 def delete_press_release(release_id):

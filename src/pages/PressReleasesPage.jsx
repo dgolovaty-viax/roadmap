@@ -381,8 +381,10 @@ export default function PressReleasesPage() {
   const [error, setError]       = useState(null)
   const [status, setStatus]     = useState('idle')
   const [openId, setOpenId]     = useState(null)
-  const [dragId, setDragId]     = useState(null)
+  const [dragId, setDragId]     = useState(null)      // card being dragged across steps
   const [hoverCell, setHoverCell] = useState(null)
+  const [dragLane, setDragLane] = useState(null)      // lane being dragged to re-rank
+  const [dropAt, setDropAt]     = useState(null)      // index the dragged lane would land at
 
   const load = useCallback(async () => {
     try {
@@ -486,6 +488,29 @@ export default function PressReleasesPage() {
     catch (e) { console.error(e); setStatus('error'); load() }
   }, [load])
 
+  // Force ranking: drop a lane into a new slot, renumber, persist only the
+  // lanes whose position actually moved.
+  const applyLaneDrop = useCallback(async () => {
+    const from = releases.findIndex(r => r.id === dragLane)
+    setDragLane(null); setDropAt(null)
+    if (from < 0 || dropAt === null) return
+
+    const next = releases.slice()
+    const [moved] = next.splice(from, 1)
+    next.splice(dropAt > from ? dropAt - 1 : dropAt, 0, moved)
+
+    const renumbered = next.map((r, i) => ({ ...r, position: i }))
+    const changed = renumbered
+      .filter(r => (releases.find(o => o.id === r.id) || {}).position !== r.position)
+      .map(r => ({ id: r.id, position: r.position }))
+    if (!changed.length) return
+
+    setReleases(renumbered)
+    setStatus('saving')
+    try { await api.pressReleases.reorder(changed); setStatus('saved') }
+    catch (e) { console.error(e); setStatus('error'); load() }
+  }, [releases, dragLane, dropAt, load])
+
   const open = releases.find(r => r.id === openId) || null
 
   return (
@@ -503,7 +528,7 @@ export default function PressReleasesPage() {
               Every release, every step, one owner each.
             </h1>
             <p style={{ fontSize: 16.5, color: C.grayMid, marginTop: 10, maxWidth: 760 }}>
-              One lane per release. Drag a card right as it clears each step. Open a card for the story, links, files and notes.
+              One lane per release. Drag a card right as it clears each step, or drag a lane by its rail to force-rank the list. Open a card for the story, links, files and notes.
             </p>
           </div>
           <button onClick={addRelease} style={{ ...btn(C.dark, C.white), fontSize: 13, padding: '10px 18px' }}>
@@ -545,16 +570,47 @@ export default function PressReleasesPage() {
               </div>
 
               {/* lanes */}
-              {releases.map(r => {
+              {releases.map((r, laneIdx) => {
                 const at = STEP_INDEX[r.step_key] ?? 0
+                const beingDragged = dragLane === r.id
                 return (
-                  <div key={r.id} style={{ display: 'flex', marginTop: 12, alignItems: 'stretch' }}>
-                    {/* lane rail */}
-                    <div style={{
-                      width: LANE_W, flexShrink: 0, background: C.white, border: `1px solid ${C.border}`,
-                      borderRadius: 9, padding: '13px 15px', marginRight: 10,
-                    }}>
-                      <div style={{ fontSize: 19, fontWeight: 500, letterSpacing: '-0.35px' }}>{r.client}</div>
+                  <div key={r.id}
+                    onDragOver={e => {
+                      if (!dragLane) return
+                      e.preventDefault()
+                      const b = e.currentTarget.getBoundingClientRect()
+                      setDropAt(e.clientY < b.top + b.height / 2 ? laneIdx : laneIdx + 1)
+                    }}
+                    onDrop={e => { if (dragLane) { e.preventDefault(); applyLaneDrop() } }}
+                    style={{ position: 'relative', opacity: beingDragged ? 0.45 : 1 }}>
+
+                    {/* where it will land */}
+                    {dragLane && dropAt === laneIdx && (
+                      <div style={{ position: 'absolute', top: 5, left: 0, right: 0, height: 3, background: C.mint, borderRadius: 2, zIndex: 3 }} />
+                    )}
+                    {dragLane && dropAt === laneIdx + 1 && laneIdx === releases.length - 1 && (
+                      <div style={{ position: 'absolute', bottom: -6, left: 0, right: 0, height: 3, background: C.mint, borderRadius: 2, zIndex: 3 }} />
+                    )}
+
+                    <div style={{ display: 'flex', marginTop: 12, alignItems: 'stretch' }}>
+                    {/* lane rail — drag it to re-rank */}
+                    <div
+                      draggable
+                      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragLane(r.id) }}
+                      onDragEnd={() => { setDragLane(null); setDropAt(null) }}
+                      style={{
+                        width: LANE_W, flexShrink: 0, background: C.white,
+                        border: `1px solid ${beingDragged ? C.mint : C.border}`,
+                        borderRadius: 9, padding: '13px 15px', marginRight: 10, cursor: 'grab',
+                      }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, color: C.mintText,
+                                       background: C.mintSoft, borderRadius: 4, padding: '2px 6px' }}>
+                          {String(laneIdx + 1).padStart(2, '0')}
+                        </span>
+                        <span style={{ color: C.border, fontSize: 13, letterSpacing: '-1px', userSelect: 'none' }}>⠿</span>
+                      </div>
+                      <div style={{ fontSize: 19, fontWeight: 500, letterSpacing: '-0.35px', marginTop: 7 }}>{r.client}</div>
                       <p style={{ fontSize: 13.5, color: C.grayMid, marginTop: 5, lineHeight: 1.38 }}>{r.topic}</p>
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, display: 'grid', gap: 5 }}>
                         <div style={{ fontFamily: MONO, fontSize: 11.5 }}>
@@ -575,7 +631,7 @@ export default function PressReleasesPage() {
                       const hovered = hoverCell === `${r.id}:${s.key}`
                       return (
                         <div key={s.key}
-                          onDragOver={e => { if (dragId === r.id) { e.preventDefault(); setHoverCell(`${r.id}:${s.key}`) } }}
+                          onDragOver={e => { if (dragId === r.id && !dragLane) { e.preventDefault(); e.stopPropagation(); setHoverCell(`${r.id}:${s.key}`) } }}
                           onDragLeave={() => setHoverCell(h => (h === `${r.id}:${s.key}` ? null : h))}
                           onDrop={e => {
                             e.preventDefault(); setHoverCell(null)
@@ -601,6 +657,7 @@ export default function PressReleasesPage() {
                         </div>
                       )
                     })}
+                    </div>
                   </div>
                 )
               })}

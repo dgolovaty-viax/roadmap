@@ -123,7 +123,7 @@ Live at: **https://roadmap-viax.vercel.app**
 | client_owners | text | who signs off on theirs |
 | step_key | text | matches a key in `PR_STEPS`; moving the card updates this |
 | expected_date | date | nullable; drives the date pill and the late/soon colouring |
-| position | integer | lane order top to bottom |
+| position | integer | lane order top to bottom — drag a lane by its rail to force-rank |
 | archived | boolean | hidden from the board when true |
 
 Seeded from `SEED` in the page on first load (`/api/press-releases/init`, idempotent).
