@@ -12,6 +12,13 @@ import { api } from '@/lib/api'
 // task keyed `task:<id>`, the value being the task as JSON. One row per task
 // means two people editing different cards never overwrite each other.
 // Deleting a task writes an empty value, which the loader skips.
+//
+// Priority: card order within a column is the force-ranked priority (#1 at
+// the top). Drag a card above or below another to re-rank; only cards whose
+// position or column changed are saved.
+//
+// Comments: one field per comment, keyed `comment:<taskId>:<commentId>`, so
+// progress notes never collide with card edits. Removing writes an empty value.
 
 const SLUG = 'partner-push'
 const FONT = "'Funnel Sans', 'Inter', system-ui, sans-serif"
@@ -70,7 +77,57 @@ const inputBase = {
 const label = { fontFamily: MONO, fontSize: 11, fontWeight: 500, letterSpacing: '0.08em',
   textTransform: 'uppercase', color: C.grayLight, display: 'block', marginBottom: 5 }
 
-function TaskModal({ task, onSave, onDelete, onClose }) {
+const AUTHOR_KEY = 'partner-push-author'
+const readAuthor = () => { try { return localStorage.getItem(AUTHOR_KEY) || '' } catch { return '' } }
+const writeAuthor = (v) => { try { localStorage.setItem(AUTHOR_KEY, v) } catch { /* storage unavailable */ } }
+
+function fmtWhen(iso) {
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' +
+    d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+function Comments({ comments, onAdd, onRemove }) {
+  const [author, setAuthor] = useState(readAuthor)
+  const [body, setBody] = useState('')
+  const submit = () => {
+    if (!body.trim()) return
+    writeAuthor(author.trim())
+    onAdd(author.trim() || 'Anonymous', body.trim())
+    setBody('')
+  }
+  return (
+    <div style={{ marginTop: 18, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+      <label style={label}>Progress comments {comments.length ? `· ${comments.length}` : ''}</label>
+      <div style={{ maxHeight: 210, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {comments.length === 0 && <p style={{ fontSize: 14, color: C.grayLight }}>No updates yet.</p>}
+        {comments.map(c => (
+          <div key={c.id} style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontFamily: MONO, fontSize: 11, color: C.grayLight }}>
+              <span><b style={{ color: C.mintText, fontWeight: 500 }}>{c.author}</b> &middot; {fmtWhen(c.at)}</span>
+              <button onClick={() => onRemove(c)} style={{ background: 'none', border: 0, color: C.grayLight, fontFamily: MONO, fontSize: 11, cursor: 'pointer' }}>Remove</button>
+            </div>
+            <p style={{ fontSize: 14.5, color: C.dark, marginTop: 4, lineHeight: 1.42, whiteSpace: 'pre-wrap' }}>{c.body}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, marginTop: 10 }}>
+        <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your name" style={{ ...inputBase, fontSize: 14 }} />
+        <input value={body} onChange={e => setBody(e.target.value)} placeholder="Add a progress update…"
+          onKeyDown={e => { if (e.key === 'Enter') submit() }} style={{ ...inputBase, fontSize: 14 }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+        <button onClick={submit} disabled={!body.trim()}
+          style={{ ...btn(body.trim() ? C.mintSoft : 'transparent', body.trim() ? C.mintText : C.grayLight, body.trim() ? C.mint : C.border) }}>
+          Add comment
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TaskModal({ task, comments, onAddComment, onRemoveComment, onSave, onDelete, onClose }) {
   const [draft, setDraft] = useState(task)
   const [armed, setArmed] = useState(false)
   const set = (k) => (e) => setDraft(d => ({ ...d, [k]: e.target.value }))
@@ -78,7 +135,7 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,30,30,0.45)', zIndex: 60,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 10, width: '100%',
-        maxWidth: 520, padding: '22px 24px', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+        maxWidth: 560, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: '22px 24px', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
         <label style={label}>Task</label>
         <input value={draft.title} onChange={set('title')} style={{ ...inputBase, fontSize: 17, fontWeight: 500 }} autoFocus />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
@@ -103,6 +160,9 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
             })}
           </div>
         </div>
+        {!task._new && (
+          <Comments comments={comments} onAdd={(a, b) => onAddComment(task.id, a, b)} onRemove={onRemoveComment} />
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22 }}>
           {task._new ? <span /> : (
             <button onClick={() => armed ? onDelete(task) : setArmed(true)}
@@ -120,14 +180,19 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
   )
 }
 
-function Card({ task, onOpen, onDragStart }) {
+function Card({ task, rank, comments, dragging, onOpen, onDragStart, onDragEnd }) {
+  const last = comments[comments.length - 1]
   return (
-    <div draggable onDragStart={e => onDragStart(e, task)} onClick={() => onOpen(task)}
+    <div data-card={task.id} draggable onDragStart={e => onDragStart(e, task)} onDragEnd={onDragEnd} onClick={() => onOpen(task)}
       style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 14px',
-        cursor: 'grab', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-      <div style={{ fontSize: 15.5, fontWeight: 500, letterSpacing: '-0.2px', lineHeight: 1.3,
+        cursor: 'grab', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', opacity: dragging ? 0.4 : 1 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      {rank && <span title="Priority" style={{ fontFamily: MONO, fontSize: 12, fontWeight: 500, color: C.mintText,
+        background: C.mintSoft, borderRadius: 4, padding: '1px 6px', marginTop: 1, flexShrink: 0 }}>#{rank}</span>}
+      <div style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 500, letterSpacing: '-0.2px', lineHeight: 1.3,
         color: task.status === 'done' ? C.grayLight : C.dark,
         textDecoration: task.status === 'done' ? 'line-through' : 'none' }}>{task.title}</div>
+      </div>
       {task.desc && <p style={{ fontSize: 14, color: C.grayMid, marginTop: 6, lineHeight: 1.42 }}>{task.desc}</p>}
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 999,
@@ -136,9 +201,22 @@ function Card({ task, onOpen, onDragStart }) {
           {task.owner || 'Unassigned'}
         </span>
         {task.partner && <span style={{ fontFamily: MONO, fontSize: 11, color: C.grayLight }}>{task.partner}</span>}
+        {comments.length > 0 && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: C.grayLight }}>
+          {comments.length} {comments.length === 1 ? 'comment' : 'comments'}</span>}
       </div>
+      {last && (
+        <p style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.border}`, fontSize: 13, color: C.grayMid, lineHeight: 1.38,
+          overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          <b style={{ fontWeight: 500, color: C.dark }}>{last.author}:</b> {last.body}
+        </p>
+      )}
     </div>
   )
+}
+
+function DropLine({ top }) {
+  return <div style={{ position: top ? 'absolute' : 'static', top: -7, left: 0, right: 0, height: 3,
+    background: C.mint, borderRadius: 2, zIndex: 3 }} />
 }
 
 export default function PartnerPushPage() {
@@ -146,7 +224,9 @@ export default function PartnerPushPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null)
-  const [dragOver, setDragOver] = useState(null)
+  const [comments, setComments] = useState({})        // taskId -> [comment]
+  const [dragId, setDragId] = useState(null)
+  const [dropAt, setDropAt] = useState(null)          // { status, index }
 
   const save = useCallback(async (task) => {
     await api.blitz.setField(SLUG, `task:${task.id}`, JSON.stringify(task))
@@ -161,6 +241,13 @@ export default function PartnerPushPage() {
         .filter(([k, v]) => k.startsWith('task:') && v)
         .map(([, v]) => { try { return JSON.parse(v) } catch { return null } })
         .filter(Boolean)
+      const cmap = {}
+      for (const [k, v] of Object.entries(fields)) {
+        if (!k.startsWith('comment:') || !v) continue
+        try { const c = JSON.parse(v); (cmap[c.taskId] ||= []).push(c) } catch { /* skip bad row */ }
+      }
+      for (const k in cmap) cmap[k].sort((a, b) => (a.at || '').localeCompare(b.at || ''))
+      setComments(cmap)
       if (!fields.seeded) {
         list = SEED.map((t, i) => ({ ...t, id: newId(), position: i }))
         await Promise.all(list.map(t => api.blitz.setField(SLUG, `task:${t.id}`, JSON.stringify(t))))
@@ -199,14 +286,55 @@ export default function PartnerPushPage() {
     setEditing({ id: newId(), title: '', owner: 'Unassigned', partner: '', desc: '', status, position: maxPos + 1, _new: true })
   }
 
-  const onDragStart = (e, task) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move' }
-  const onDrop = (e, status) => {
-    e.preventDefault(); setDragOver(null)
-    const id = e.dataTransfer.getData('text/plain')
+  const addComment = async (taskId, author, body) => {
+    const c = { id: newId(), taskId, author, body, at: new Date().toISOString() }
+    setComments(m => ({ ...m, [taskId]: [...(m[taskId] || []), c] }))
+    try { await api.blitz.setField(SLUG, `comment:${taskId}:${c.id}`, JSON.stringify(c)) } catch (e) { setError(e.message) }
+  }
+  const removeComment = async (c) => {
+    setComments(m => ({ ...m, [c.taskId]: (m[c.taskId] || []).filter(x => x.id !== c.id) }))
+    try { await api.blitz.setField(SLUG, `comment:${c.taskId}:${c.id}`, '') } catch (e) { setError(e.message) }
+  }
+
+  const onDragStart = (e, task) => {
+    e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'
+    setDragId(task.id)
+  }
+  const endDrag = () => { setDragId(null); setDropAt(null) }
+
+  // Where in the column would the card land? First card whose middle is below the pointer.
+  const onColumnDragOver = (e, status) => {
+    e.preventDefault()
+    const cards = [...e.currentTarget.querySelectorAll('[data-card]')]
+    let index = cards.length
+    for (let i = 0; i < cards.length; i++) {
+      const r = cards[i].getBoundingClientRect()
+      if (e.clientY < r.top + r.height / 2) { index = i; break }
+    }
+    setDropAt(d => (d && d.status === status && d.index === index) ? d : { status, index })
+  }
+
+  const onDrop = async (e, status) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain') || dragId
+    const target = dropAt && dropAt.status === status ? dropAt.index : byColumn[status].length
+    endDrag()
     const task = tasks.find(t => t.id === id)
-    if (!task || task.status === status) return
-    const maxPos = Math.max(-1, ...byColumn[status].map(t => t.position ?? 0))
-    upsert({ ...task, status, position: maxPos + 1 })
+    if (!task) return
+    const list = byColumn[status].filter(t => t.id !== id)
+    const from = byColumn[status].findIndex(t => t.id === id)
+    const at = from !== -1 && from < target ? target - 1 : target
+    list.splice(at, 0, { ...task, status })
+    const changed = []
+    const next = list.map((t, i) => {
+      const orig = tasks.find(x => x.id === t.id)
+      const nt = { ...t, position: i }
+      if (!orig || orig.position !== i || orig.status !== nt.status) changed.push(nt)
+      return nt
+    })
+    if (!changed.length) return
+    setTasks(ts => ts.map(t => next.find(n => n.id === t.id) || t))
+    try { await Promise.all(changed.map(save)) } catch (err) { setError(err.message) }
   }
 
   const counts = Object.fromEntries(COLUMNS.map(c => [c.key, byColumn[c.key].length]))
@@ -225,7 +353,7 @@ export default function PartnerPushPage() {
             </h1>
             <p style={{ fontSize: 16.5, color: C.grayMid, marginTop: 10, maxWidth: 760 }}>
               The three Q4 asks of both partners, plus the next steps from the 5 Oct leadership sync.
-              Drag a card to move it; click it to edit.
+              Drag cards to move them or force-rank priority (#1 is top). Click a card to edit it or add a progress comment.
             </p>
           </div>
           <button onClick={() => addTask('todo')} style={{ ...btn(C.dark, C.white), fontSize: 13, padding: '10px 18px' }}>
@@ -245,12 +373,11 @@ export default function PartnerPushPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18, marginTop: 28 }}>
             {COLUMNS.map(col => (
               <div key={col.key}
-                onDragOver={e => { e.preventDefault(); setDragOver(col.key) }}
-                onDragLeave={() => setDragOver(d => d === col.key ? null : d)}
+                onDragOver={e => onColumnDragOver(e, col.key)}
+                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDropAt(d => d && d.status === col.key ? null : d) }}
                 onDrop={e => onDrop(e, col.key)}
-                style={{ background: dragOver === col.key ? C.mintSoft : C.bgMed, borderRadius: 10, padding: 12,
-                  minHeight: 240, transition: 'background 0.12s',
-                  outline: dragOver === col.key ? `2px dashed ${C.mint}` : 'none' }}>
+                style={{ background: dropAt?.status === col.key ? C.mintSoft : C.bgMed, borderRadius: 10, padding: 12,
+                  minHeight: 240, transition: 'background 0.12s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px 12px' }}>
                   <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.dark }}>
                     {col.label} <span style={{ color: C.grayLight }}>&middot; {counts[col.key]}</span>
@@ -258,7 +385,16 @@ export default function PartnerPushPage() {
                   <button onClick={() => addTask(col.key)} style={btn('transparent', C.grayMid, 'transparent')} aria-label={`Add to ${col.label}`}>+</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {byColumn[col.key].map(t => <Card key={t.id} task={t} onOpen={setEditing} onDragStart={onDragStart} />)}
+                  {byColumn[col.key].map((t, i) => (
+                    <div key={t.id} style={{ position: 'relative' }}>
+                      {dropAt?.status === col.key && dropAt.index === i && <DropLine top />}
+                      <Card task={t} rank={col.key === 'done' ? null : i + 1} comments={comments[t.id] || []}
+                        dragging={dragId === t.id} onOpen={setEditing} onDragStart={onDragStart} onDragEnd={endDrag} />
+                    </div>
+                  ))}
+                  {dropAt?.status === col.key && dropAt.index === byColumn[col.key].length && (
+                    <div style={{ position: 'relative', height: 4 }}><DropLine /></div>
+                  )}
                 </div>
               </div>
             ))}
@@ -267,7 +403,8 @@ export default function PartnerPushPage() {
       </div>
 
       {editing && (
-        <TaskModal task={editing} onClose={() => setEditing(null)} onDelete={remove}
+        <TaskModal task={editing} comments={comments[editing.id] || []}
+          onAddComment={addComment} onRemoveComment={removeComment} onClose={() => setEditing(null)} onDelete={remove}
           onSave={(d) => { const { _new, ...clean } = d; if (clean.title.trim()) upsert(clean); setEditing(null) }} />
       )}
     </div>
