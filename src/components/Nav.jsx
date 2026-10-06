@@ -97,6 +97,12 @@ const BLITZ_ITEMS = [
   { to: '/blitz/rmb', label: 'Blitz: RMB' },
 ]
 
+// Partner Push dropdown: the Q4 task board and the partner strategy doc.
+const PARTNER_ITEMS = [
+  { to: '/partner-push/board',    label: 'Board' },
+  { to: '/partner-push/strategy', label: 'Strategy' },
+]
+
 export default function Nav() {
   return (
     <nav
@@ -143,9 +149,7 @@ export default function Nav() {
         <NavLink to="/press-releases" className={navLinkClass}>
           Press Releases
         </NavLink>
-        <NavLink to="/partner-push" className={navLinkClass}>
-          Partner Push
-        </NavLink>
+        <NavDropdown label="Partner Push" basePath="/partner-push" items={PARTNER_ITEMS} />
         <NavDropdown label="Marketing Blitz" basePath="/blitz" items={BLITZ_ITEMS} />
       </div>
     </nav>
