@@ -14,6 +14,7 @@ import SupportPage from '@/pages/SupportPage'
 import KanbanPage from '@/pages/KanbanPage'
 import BlitzPage from '@/pages/BlitzPage'
 import PressReleasesPage from '@/pages/PressReleasesPage'
+import PartnerPushPage from '@/pages/PartnerPushPage'
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/priority-board" element={<KanbanPage />} />
             <Route path="/blitz/:slug" element={<BlitzPage />} />
             <Route path="/press-releases" element={<PressReleasesPage />} />
+            <Route path="/partner-push" element={<PartnerPushPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>
