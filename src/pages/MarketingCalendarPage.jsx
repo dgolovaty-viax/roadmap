@@ -145,17 +145,17 @@ function EventChip({ event, campaign, compact, onOpen, onDragStart, onDragEnd })
       )}
       {(event.owner || campaign || (!compact && hasContent)) && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: compact ? 6 : '4px 10px', marginTop: compact ? 2 : 7,
-          fontFamily: MONO, fontSize: compact ? 10.5 : 11, color: C.grayMid, minWidth: 0,
-          flexWrap: compact ? 'nowrap' : 'wrap', overflow: 'hidden', whiteSpace: 'nowrap',
+          display: 'flex', flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'stretch' : 'center',
+          gap: compact ? 1 : '4px 10px', marginTop: compact ? 2 : 7, flexWrap: 'wrap',
+          fontFamily: MONO, fontSize: compact ? 10.5 : 11, color: C.grayMid, minWidth: 0, lineHeight: 1.35,
         }}>
           {event.owner && (
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flexShrink: 1 }}>{event.owner}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{event.owner}</span>
           )}
           {campaign && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, flexShrink: 2, overflow: 'hidden' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
               <span style={{ width: 6, height: 6, borderRadius: 3, background: color, flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{campaign.name}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{campaign.name}</span>
             </span>
           )}
           {!compact && hasContent && (
