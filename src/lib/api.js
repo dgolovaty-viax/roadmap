@@ -140,4 +140,27 @@ export const api = {
     upsertItem: (releaseId, item)  => request('POST',   `/api/press-releases/${releaseId}/items`, item),
     deleteItem: (itemId)           => request('DELETE', `/api/press-release-items/${itemId}`),
   },
+
+  // ── Marketing Calendar ───────────────────────────────────────────────
+  // Events (date, owner, topic, campaign tag, content URL or file) and the
+  // managed campaign list. Event list responses omit file contents; fetch
+  // them with getFile when someone downloads.
+
+  marketing: {
+    campaigns:      ()               => request('GET',    '/api/marketing/campaigns'),
+    upsertCampaign: (campaign)       => request('POST',   '/api/marketing/campaigns', campaign),
+    deleteCampaign: (id)             => request('DELETE', `/api/marketing/campaigns/${id}`),
+    events:         ({ from, to } = {}) => {
+      const qs = new URLSearchParams()
+      if (from) qs.set('from', from)
+      if (to) qs.set('to', to)
+      const q = qs.toString()
+      return request('GET', `/api/marketing/events${q ? `?${q}` : ''}`)
+    },
+    upsertEvent:    (event)          => request('POST',   '/api/marketing/events', event),
+    deleteEvent:    (id)             => request('DELETE', `/api/marketing/events/${id}`),
+    getFile:        (id)             => request('GET',    `/api/marketing/events/${id}/file`),
+    putFile:        (id, file)       => request('PUT',    `/api/marketing/events/${id}/file`, file),
+    deleteFile:     (id)             => request('DELETE', `/api/marketing/events/${id}/file`),
+  },
 }

@@ -150,6 +150,9 @@ export default function Nav() {
           Press Releases
         </NavLink>
         <NavDropdown label="Partner Push" basePath="/partner-push" items={PARTNER_ITEMS} />
+        <NavLink to="/marketing-calendar" className={navLinkClass}>
+          Marketing Calendar
+        </NavLink>
         <NavDropdown label="Marketing Blitz" basePath="/blitz" items={BLITZ_ITEMS} />
       </div>
     </nav>

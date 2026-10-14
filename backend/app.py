@@ -1602,6 +1602,231 @@ def delete_pr_item(item_id):
     return jsonify({"ok": True})
 
 
+# ── Marketing Calendar ─────────────────────────────────────────────────
+# A month / week calendar of marketing events, each optionally tagged with a
+# campaign from a managed list. The plain functions below hold the logic so
+# the HTTP routes and the MCP tools (mcp_server.py) share one code path; they
+# raise ValueError for bad input, which both callers turn into a clean error.
+
+MKT_EVENT_COLS = ("id,title,event_date,owner,topic,campaign_id,content_url,"
+                  "file_name,mime_type,size_bytes,created_at,updated_at")
+MKT_FILE_LIMIT = 4_200_000                          # ~3MB once base64 is decoded
+MKT_CAMPAIGN_COLORS = ["#5ED49A", "#6C8EF5", "#F2A33A", "#E0607E",
+                       "#9B7BE0", "#3BB8C4", "#C7A23A", "#8A8A8A"]
+
+
+def _mkt_date(value):
+    """Normalise to YYYY-MM-DD or raise ValueError."""
+    s = str(value or "").strip()[:10]
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        raise ValueError(f"date must be YYYY-MM-DD, got {value!r}")
+
+
+def mkt_list_campaigns():
+    res = _sb(lambda: supabase.table("marketing_campaigns").select("*")
+              .order("position").order("created_at"))
+    return res.data or []
+
+
+def mkt_resolve_campaign(value):
+    """Accept a campaign id or name (case-insensitive). '' / None → None."""
+    v = str(value or "").strip()
+    if not v:
+        return None
+    campaigns = mkt_list_campaigns()
+    for c in campaigns:
+        if c["id"] == v or c["name"].strip().lower() == v.lower():
+            return c["id"]
+    names = ", ".join(c["name"] for c in campaigns) or "none yet"
+    raise ValueError(f"unknown campaign {v!r}. Existing campaigns: {names}")
+
+
+def mkt_save_campaign(data):
+    name = str(data.get("name") or "").strip()
+    cid = data.get("id")
+    if not name:
+        raise ValueError("campaign name is required")
+    for c in mkt_list_campaigns():
+        if c["name"].strip().lower() == name.lower() and c["id"] != cid:
+            raise ValueError(f"a campaign called {c['name']!r} already exists")
+
+    row = {"name": name, "updated_at": now()}
+    if data.get("color"):
+        row["color"] = data["color"]
+    if data.get("position") is not None:
+        row["position"] = int(data["position"])
+
+    if cid:
+        res = _sb(lambda: supabase.table("marketing_campaigns").update(row).eq("id", cid))
+        if not res.data:
+            raise ValueError(f"no campaign with id {cid}")
+        return res.data[0]
+
+    count = len(mkt_list_campaigns())
+    row.setdefault("color", MKT_CAMPAIGN_COLORS[count % len(MKT_CAMPAIGN_COLORS)])
+    row.setdefault("position", count)
+    row["id"] = str(uuid.uuid4())
+    res = _sb(lambda: supabase.table("marketing_campaigns").insert(row))
+    return res.data[0] if res.data else row
+
+
+def mkt_list_events(date_from=None, date_to=None, campaign=None):
+    def build():
+        q = supabase.table("marketing_events").select(MKT_EVENT_COLS)
+        if date_from:
+            q = q.gte("event_date", _mkt_date(date_from))
+        if date_to:
+            q = q.lte("event_date", _mkt_date(date_to))
+        if campaign:
+            q = q.eq("campaign_id", mkt_resolve_campaign(campaign))
+        return q.order("event_date").order("created_at")
+    return _sb(build).data or []
+
+
+def mkt_get_event(event_id):
+    res = _sb(lambda: supabase.table("marketing_events").select(MKT_EVENT_COLS)
+              .eq("id", event_id).limit(1))
+    return res.data[0] if res.data else None
+
+
+def mkt_save_event(data):
+    """Create (no id) or partially update (id) an event.
+
+    Accepted keys (camelCase or snake_case): title, date / eventDate,
+    owner, topic, campaign / campaignId (id or name; '' clears it),
+    contentUrl. Only keys that are present are written on update.
+    """
+    def pick(*keys):
+        for k in keys:
+            if k in data:
+                return True, data[k]
+        return False, None
+
+    row = {}
+    for field, keys in (("title", ("title",)), ("owner", ("owner",)),
+                        ("topic", ("topic",)),
+                        ("content_url", ("contentUrl", "content_url"))):
+        present, val = pick(*keys)
+        if present:
+            row[field] = str(val or "").strip()
+
+    present, val = pick("date", "eventDate", "event_date")
+    if present:
+        row["event_date"] = _mkt_date(val)
+
+    present, val = pick("campaign", "campaignId", "campaign_id")
+    if present:
+        row["campaign_id"] = mkt_resolve_campaign(val)
+
+    event_id = data.get("id")
+    if event_id:
+        if not mkt_get_event(event_id):
+            raise ValueError(f"no event with id {event_id}")
+        if "title" in row and not row["title"]:
+            raise ValueError("title cannot be empty")
+        row["updated_at"] = now()
+        _sb(lambda: supabase.table("marketing_events").update(row).eq("id", event_id))
+        return mkt_get_event(event_id)
+
+    if not row.get("title"):
+        raise ValueError("title is required")
+    if not row.get("event_date"):
+        raise ValueError("date is required (YYYY-MM-DD)")
+    row["id"] = str(uuid.uuid4())
+    _sb(lambda: supabase.table("marketing_events").insert(row))
+    return mkt_get_event(row["id"])
+
+
+def _mkt_call(fn, *args, **kwargs):
+    try:
+        return jsonify(fn(*args, **kwargs)), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/marketing/campaigns", methods=["GET"])
+@_api_errors
+def list_marketing_campaigns():
+    return jsonify(mkt_list_campaigns())
+
+
+@app.route("/api/marketing/campaigns", methods=["POST"])
+@_api_errors
+def upsert_marketing_campaign():
+    return _mkt_call(mkt_save_campaign, request.json or {})
+
+
+@app.route("/api/marketing/campaigns/<campaign_id>", methods=["DELETE"])
+@_api_errors
+def delete_marketing_campaign(campaign_id):
+    # Events tagged with it are un-tagged by the FK (on delete set null).
+    _sb(lambda: supabase.table("marketing_campaigns").delete().eq("id", campaign_id))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/marketing/events", methods=["GET"])
+@_api_errors
+def list_marketing_events():
+    a = request.args
+    return _mkt_call(mkt_list_events, a.get("from"), a.get("to"), a.get("campaign"))
+
+
+@app.route("/api/marketing/events", methods=["POST"])
+@_api_errors
+def upsert_marketing_event():
+    return _mkt_call(mkt_save_event, request.json or {})
+
+
+@app.route("/api/marketing/events/<event_id>", methods=["DELETE"])
+@_api_errors
+def delete_marketing_event(event_id):
+    _sb(lambda: supabase.table("marketing_events").delete().eq("id", event_id))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/marketing/events/<event_id>/file", methods=["GET"])
+@_api_errors
+def get_marketing_event_file(event_id):
+    res = _sb(lambda: supabase.table("marketing_events")
+              .select("file_name,mime_type,size_bytes,file_data").eq("id", event_id).limit(1))
+    if not res.data or not res.data[0].get("file_data"):
+        return jsonify({"error": "no file on this event"}), 404
+    return jsonify(res.data[0])
+
+
+@app.route("/api/marketing/events/<event_id>/file", methods=["PUT"])
+@_api_errors
+def put_marketing_event_file(event_id):
+    """Attach (or replace) the event's content file. Body:
+    { fileName, mimeType, sizeBytes, data }  — data is base64."""
+    body = request.json or {}
+    data = body.get("data") or ""
+    if not data:
+        return jsonify({"error": "data is required"}), 400
+    if len(data) > MKT_FILE_LIMIT:
+        return jsonify({"error": "file is larger than 3MB — link to it instead"}), 413
+    _sb(lambda: supabase.table("marketing_events").update({
+        "file_name":  body.get("fileName", "") or "file",
+        "mime_type":  body.get("mimeType", "") or "application/octet-stream",
+        "size_bytes": int(body.get("sizeBytes", 0) or 0),
+        "file_data":  data,
+        "updated_at": now(),
+    }).eq("id", event_id))
+    return jsonify(mkt_get_event(event_id) or {"error": "not found"})
+
+
+@app.route("/api/marketing/events/<event_id>/file", methods=["DELETE"])
+@_api_errors
+def delete_marketing_event_file(event_id):
+    _sb(lambda: supabase.table("marketing_events").update({
+        "file_name": "", "mime_type": "", "size_bytes": 0, "file_data": "",
+        "updated_at": now(),
+    }).eq("id", event_id))
+    return jsonify(mkt_get_event(event_id) or {"ok": True})
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")

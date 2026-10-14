@@ -16,6 +16,7 @@ import BlitzPage from '@/pages/BlitzPage'
 import PressReleasesPage from '@/pages/PressReleasesPage'
 import PartnerPushPage from '@/pages/PartnerPushPage'
 import PartnerStrategyPage from '@/pages/PartnerStrategyPage'
+import MarketingCalendarPage from '@/pages/MarketingCalendarPage'
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/partner-push" element={<PartnerPushPage />} />
             <Route path="/partner-push/board" element={<PartnerPushPage />} />
             <Route path="/partner-push/strategy" element={<PartnerStrategyPage />} />
+            <Route path="/marketing-calendar" element={<MarketingCalendarPage />} />
             <Route path="*" element={<RoadmapPage />} />
           </Routes>
         </main>

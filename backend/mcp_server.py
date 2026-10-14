@@ -12,13 +12,16 @@ Tools exposed:
   - list_epics        → GET  /api/epics
   - list_idea_tags    → GET  /api/idea-tags
   - post_scan         → POST /api/suggestions/scan
+  - list_marketing_campaigns → GET  /api/marketing/campaigns
+  - list_marketing_events    → GET  /api/marketing/events
+  - upsert_marketing_event   → POST /api/marketing/events (create or update)
 
 Auth: /mcp is intentionally unauthenticated so Cowork's custom-connector UI
 (which is OAuth-only) can connect without requiring a full OAuth 2.1 flow on
 the server. Protection is URL obscurity — the Railway subdomain is not
 published anywhere — plus the narrow blast radius of the exposed tools
-(read-only listing and posting to a suggestions inbox that is manually
-reviewed). The downstream write endpoint /api/suggestions/scan still requires
+(read-only listing, posting to a suggestions inbox that is manually
+reviewed, and creating/updating marketing calendar events — no deletes). The downstream write endpoint /api/suggestions/scan still requires
 X-Scan-Secret, which post_scan promotes internally from the server's env var.
 
 Stateless: no session IDs, no SSE streaming. Responses are plain JSON.
@@ -225,6 +228,79 @@ def _tool_post_scan(args):
         if status >= 400:
             raise RuntimeError(f"ingest_scan returned {status}: {body}")
         return body
+
+
+# ── Marketing Calendar tools ───────────────────────────────────────────
+# These call the plain mkt_* functions in app.py directly (not the Flask
+# views), so validation errors come back as a readable tool error.
+
+def _mkt():
+    import app as backend
+    return backend
+
+
+@tool(
+    name="list_marketing_campaigns",
+    description=(
+        "List the campaigns on the Marketing Calendar. Events can be tagged "
+        "with one of these by id or name. Returns an array of "
+        "{id, name, color, position}."
+    ),
+    input_schema={"type": "object", "properties": {}, "additionalProperties": False},
+)
+def _tool_list_marketing_campaigns(_args):
+    return _mkt().mkt_list_campaigns()
+
+
+@tool(
+    name="list_marketing_events",
+    description=(
+        "List events on the Marketing Calendar, oldest first. Optionally "
+        "filter by an inclusive date range and/or a campaign (id or name). "
+        "Returns an array of {id, title, event_date, owner, topic, "
+        "campaign_id, content_url, file_name, ...}. Uploaded file contents "
+        "are not included."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "from":     {"type": "string", "description": "Start date, YYYY-MM-DD (inclusive)"},
+            "to":       {"type": "string", "description": "End date, YYYY-MM-DD (inclusive)"},
+            "campaign": {"type": "string", "description": "Campaign id or name"},
+        },
+        "additionalProperties": False,
+    },
+)
+def _tool_list_marketing_events(args):
+    return _mkt().mkt_list_events(args.get("from"), args.get("to"), args.get("campaign"))
+
+
+@tool(
+    name="upsert_marketing_event",
+    description=(
+        "Create or update a Marketing Calendar event. Omit `id` to create — "
+        "`title` and `date` are then required. Pass `id` to update; only the "
+        "fields you send are changed. `campaign` takes a campaign id or name "
+        "from list_marketing_campaigns (an empty string removes the tag; an "
+        "unknown name is rejected). `contentUrl` is where the campaign "
+        "content to be deployed lives. Returns the saved event."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "id":         {"type": "string", "description": "Event id — set to update an existing event"},
+            "title":      {"type": "string", "description": "Short event name shown on the calendar"},
+            "date":       {"type": "string", "description": "Event date, YYYY-MM-DD"},
+            "owner":      {"type": "string", "description": "Who owns the event"},
+            "topic":      {"type": "string", "description": "What the event is about"},
+            "campaign":   {"type": "string", "description": "Campaign id or name; empty string clears it"},
+            "contentUrl": {"type": "string", "description": "URL of the content to deploy in the campaign"},
+        },
+        "additionalProperties": False,
+    },
+)
+def _tool_upsert_marketing_event(args):
+    return _mkt().mkt_save_event(args or {})
 
 
 # ── MCP dispatch ───────────────────────────────────────────────────────

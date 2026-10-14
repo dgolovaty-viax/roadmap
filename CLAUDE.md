@@ -9,6 +9,7 @@ A product roadmap tool for the viax team. It has five main sections:
 - **Sessions** — meeting/session notes.
 - **Press Releases** — a swimlane board tracking each press release or customer case study from candidate through to LinkedIn amplification. Steps run across the top (defined in `PR_STEPS` in `src/pages/PressReleasesPage.jsx`), one lane per release, and each card holds content, links, file attachments and comments.
 - **Partner Push** — a nav dropdown with two pages. **Board** (`/partner-push/board`, also `/partner-push`) is a To do / In progress / Done board for the Q4 partner push. **Strategy** (`/partner-push/strategy`) shows the partner strategy doc, a static page at `public/partner-strategy.html`, in an iframe; replace that file to update it. On the board, each task has an owner, partner and short description. No tables of its own: it stores each task as JSON in `blitz_fields` (key `task:<id>`) under a `blitzes` row with slug `partner-push`, created on first load. An empty value means deleted. Card order within a column is the force-ranked priority (drag to re-rank; `position` is saved per task). Progress comments are stored one per field, keyed `comment:<taskId>:<commentId>`. Seeded once from `SEED` in `src/pages/PartnerPushPage.jsx`.
+- **Marketing Calendar** (`/marketing-calendar`) — a month calendar of marketing events that zooms into a week (click a date number, or the Month / Week toggle). View and anchor date are in the URL (`?view=week&d=2026-10-14`). Each event has a title, date, owner, topic, optional campaign tag and its content: a URL where the campaign content lives and/or an uploaded file (≤3MB). Drag an event to another day to reschedule. Campaigns are a managed list (Campaigns button: add, rename, recolour, remove — removing un-tags events, never deletes them). Tables: `marketing_campaigns`, `marketing_events` (migration `008_marketing_calendar.sql`). Also exposed through the MCP server: `list_marketing_campaigns`, `list_marketing_events`, `upsert_marketing_event`.
 - **Marketing Blitz** — a reusable launch-campaign template. One page renders any blitz (`/blitz/:slug`); the first is **Blitz: RMB** at `/blitz/rmb`. Six phases from concepts to implementation showcase, with dates, owners' commitments, audience decks and LinkedIn post review all persisted to Supabase.
 
 Live at: **https://roadmap-viax.vercel.app**
@@ -142,6 +143,27 @@ Everything hanging off a release card, discriminated by `kind`:
 | body | text | content and comments |
 | file_name / mime_type / size_bytes / data | text/int | attachments; `data` is base64, capped at 3MB by the backend |
 | author | text | comments |
+
+### `marketing_campaigns` (Marketing Calendar)
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | unique, case-insensitive |
+| color | text | hex; auto-assigned from a palette on create |
+| position | integer | list order |
+
+### `marketing_events`
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| title | text | shown on the calendar |
+| event_date | date | |
+| owner / topic | text | |
+| campaign_id | uuid | FK → marketing_campaigns, `on delete set null` |
+| content_url | text | where the content to deploy lives |
+| file_name / mime_type / size_bytes / file_data | text/int | uploaded content; `file_data` is base64 (≤3MB), excluded from list responses, fetched via `GET /api/marketing/events/<id>/file` |
+
+Logic lives in plain `mkt_*` functions in `backend/app.py`, shared by the HTTP routes and the MCP tools.
 
 ---
 
