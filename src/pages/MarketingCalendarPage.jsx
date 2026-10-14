@@ -137,20 +137,31 @@ function EventChip({ event, campaign, compact, onOpen, onDragStart, onDragEnd })
       }}>
         {event.title || 'Untitled'}
       </div>
-      {!compact && (
-        <>
-          {event.topic && (
-            <div style={{ fontSize: 13, color: C.grayMid, marginTop: 4, lineHeight: 1.4,
-                          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {event.topic}
-            </div>
+      {!compact && event.topic && (
+        <div style={{ fontSize: 13, color: C.grayMid, marginTop: 4, lineHeight: 1.4,
+                      display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {event.topic}
+        </div>
+      )}
+      {(event.owner || campaign || (!compact && hasContent)) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: compact ? 6 : '4px 10px', marginTop: compact ? 2 : 7,
+          fontFamily: MONO, fontSize: compact ? 10.5 : 11, color: C.grayMid, minWidth: 0,
+          flexWrap: compact ? 'nowrap' : 'wrap', overflow: 'hidden', whiteSpace: 'nowrap',
+        }}>
+          {event.owner && (
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flexShrink: 1 }}>{event.owner}</span>
           )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 7, fontFamily: MONO, fontSize: 11, color: C.grayLight }}>
-            {event.owner && <span>{event.owner}</span>}
-            {campaign && <span style={{ color }}>{campaign.name}</span>}
-            {hasContent && <span>{event.file_name ? 'file' : 'link'}{event.file_name && event.content_url ? ' + link' : ''}</span>}
-          </div>
-        </>
+          {campaign && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, flexShrink: 2, overflow: 'hidden' }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: color, flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{campaign.name}</span>
+            </span>
+          )}
+          {!compact && hasContent && (
+            <span style={{ color: C.grayLight }}>{event.file_name ? 'file' : 'link'}{event.file_name && event.content_url ? ' + link' : ''}</span>
+          )}
+        </div>
       )}
     </div>
   )
