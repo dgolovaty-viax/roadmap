@@ -29,6 +29,76 @@ const NO_CAMPAIGN = '#8A8A8A'
 const FILE_LIMIT = 3 * 1024 * 1024
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']   // weeks start Monday
 const MAX_CHIPS = 3                                                 // per day in month view
+const WEEKLY_TARGET = 3                                             // posts per leader per week
+
+// ── Leadership lanes (week view) ───────────────────────────────────────
+//
+// The week view is a swimlane board: one lane per leadership-team member,
+// each with the kind of marketing they own, plus an Unassigned lane. An event
+// lands in the first lane whose `match` names appear in its owner field, so
+// "Larry" and "Larry Ramponi" both go to Larry's lane. Adding an event from a
+// lane pre-fills that owner; dragging an event to another lane re-assigns it.
+// Edit this list to change who has a lane or what they own.
+
+const LEADERS = [
+  {
+    id: 'larry', name: 'Larry Ramponi', owner: 'Larry', match: ['larry', 'ramponi'],
+    focus: 'Revenue Motion film of the week',
+    blurb: 'A new motion film every week, on repeat, plus platform feature videos. Runs the “Meet your Revenue Motion Agent” campaign and helps the team with resource pages, landing pages and video.',
+  },
+  {
+    id: 'rick', name: 'Rick Chavie', owner: 'Rick', match: ['rick', 'chavie'],
+    focus: 'CEO thought leadership',
+    blurb: 'One focused point of view, repeated: intent to execution, and revenue that stops waiting on the ERP roadmap. The same idea said many ways, plus what he hears from CIOs and at events.',
+  },
+  {
+    id: 'brian', name: 'Brian Diehl', owner: 'Brian', match: ['brian', 'diehl'],
+    focus: 'Industry challenges',
+    blurb: 'The problems the market already feels: S/4HANA timelines, migration delays, revenue change stuck behind the release calendar. Approved stats only: 61% · 8% · 3–5×.',
+  },
+  {
+    id: 'andrew', name: 'Andrew Martin', owner: 'Andrew', match: ['andrew', 'martin'],
+    focus: '“Heard this” — partners',
+    blurb: 'What partners and SIs are saying in the field, with an AI framing: where agentic delivery meets revenue motions, and why partners build on viax.',
+  },
+  {
+    id: 'doug', name: 'Doug Wessel', owner: 'Doug', match: ['doug', 'wessel'],
+    focus: '“Heard this” — clients',
+    blurb: 'What clients say on calls (execution at the edge, ERP at the core; launching on their own timeline), with an AI framing. Use cases and demos from co-innovation work.',
+  },
+  {
+    id: 'dennis', name: 'Dennis Golovaty', owner: 'Dennis', match: ['dennis', 'golovaty'],
+    focus: 'Delivery & internal',
+    blurb: 'How we build: agentic delivery, skills and Claude across the team, platform progress. One idea fanned out into several short posts.',
+  },
+  {
+    id: 'lucas', name: 'Lucas Seidenfus', owner: 'Lucas', match: ['lucas', 'seidenfus'],
+    focus: 'Customer wins',
+    blurb: 'Stories from live implementations: sprint demos and milestones with cleared names (2U / edX, Wiley).',
+  },
+]
+const OTHER_LANE = {
+  id: 'other', name: 'Unassigned', owner: '', match: [], focus: 'Team & shared',
+  blurb: 'Events with no owner or someone outside the lanes above: partner and client co-posts, paid, podcast, webinar.',
+}
+const LANES = [...LEADERS, OTHER_LANE]
+const laneFor = owner => {
+  const o = String(owner || '').toLowerCase()
+  return (o && LEADERS.find(l => l.match.some(m => o.includes(m)))) || OTHER_LANE
+}
+
+// High-level ideas for the week, from the #leadership discussion and the
+// messaging pyramid (roof + two pillars, approved proof only).
+const WEEK_IDEAS = [
+  { t: 'Meet your Revenue Motion Agent', b: 'This is the campaign. Every post points back to motions and to the agentic way we build them.' },
+  { t: 'Three posts each, planned here', b: 'Everyone plans at least three posts for the week in their lane, with any resource page, landing page or video they need. Ask Larry early.' },
+  { t: 'Tie it back to the pyramid', b: 'Intent to execution. Lead with one pillar: Outside ERP timelines (pace) or Model any motion (fidelity). Never anti-ERP.' },
+  { t: 'Commerce take-down, every day', b: 'Someone posts on taking down commerce and the software category every day, and its inverse: execution outside ERP.' },
+  { t: 'Customer stories & “heard this”', b: 'What we hear at customers and partners. Wiley, 2U / edX and the anonymized Fortune 500 medtech are cleared; anything else needs clearing.' },
+  { t: 'Post the film the right way', b: '45–60s cut that opens on the product, captions burned in, UTM link in the first comment, end on a question, reply to every comment the same day.' },
+  { t: 'Comment on each other', b: 'Share and comment on every team post within the hour, with your own take on revenue motions.' },
+  { t: 'Beyond LinkedIn', b: 'Partners, clients, paid, podcast, webinar. Put those on the calendar too.' },
+]
 
 // ── Dates (all local, keyed as YYYY-MM-DD — never via toISOString) ─────
 
@@ -116,7 +186,7 @@ function Overlay({ onClose, width = 640, children }) {
 
 // ── Event chip / card ──────────────────────────────────────────────────
 
-function EventChip({ event, campaign, compact, onOpen, onDragStart, onDragEnd }) {
+function EventChip({ event, campaign, compact, hideOwner, onOpen, onDragStart, onDragEnd }) {
   const color = campaign?.color || NO_CAMPAIGN
   const hasContent = event.content_url || event.file_name
   return (
@@ -143,13 +213,13 @@ function EventChip({ event, campaign, compact, onOpen, onDragStart, onDragEnd })
           {event.topic}
         </div>
       )}
-      {(event.owner || campaign || (!compact && hasContent)) && (
+      {((event.owner && !hideOwner) || campaign || (!compact && hasContent)) && (
         <div style={{
           display: 'flex', flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'stretch' : 'center',
           gap: compact ? 1 : '4px 10px', marginTop: compact ? 2 : 7, flexWrap: 'wrap',
           fontFamily: MONO, fontSize: compact ? 10.5 : 11, color: C.grayMid, minWidth: 0, lineHeight: 1.35,
         }}>
-          {event.owner && (
+          {event.owner && !hideOwner && (
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{event.owner}</span>
           )}
           {campaign && (
@@ -169,12 +239,12 @@ function EventChip({ event, campaign, compact, onOpen, onDragStart, onDragEnd })
 
 // ── Event modal ────────────────────────────────────────────────────────
 
-function EventModal({ event, defaultDate, campaigns, onClose, onSaved, onDeleted }) {
+function EventModal({ event, defaultDate, defaultOwner, campaigns, onClose, onSaved, onDeleted }) {
   const isNew = !event
   const [form, setForm] = useState(() => ({
     title: event?.title || '',
     date: event?.event_date || defaultDate || todayKey(),
-    owner: event?.owner || '',
+    owner: event?.owner || defaultOwner || '',
     topic: event?.topic || '',
     campaignId: event?.campaign_id || '',
     contentUrl: event?.content_url || '',
@@ -274,7 +344,11 @@ function EventModal({ event, defaultDate, campaigns, onClose, onSaved, onDeleted
           </div>
           <div>
             <label style={fieldLabel}>Owner</label>
-            <input value={form.owner} onChange={e => set('owner', e.target.value)} placeholder="Who owns it" style={inputBase} />
+            <input value={form.owner} onChange={e => set('owner', e.target.value)} placeholder="Who owns it"
+              list="mkt-owners" style={inputBase} />
+            <datalist id="mkt-owners">
+              {LEADERS.map(l => <option key={l.id} value={l.owner}>{l.focus}</option>)}
+            </datalist>
           </div>
           <div>
             <label style={fieldLabel}>Campaign</label>
@@ -513,33 +587,57 @@ function MonthView({ anchor, eventsByDay, ...rest }) {
   )
 }
 
-function WeekColumn({ day, events, campaignById, onAdd, onOpen, onMove, drag }) {
+const LANE_COL = 250
+const DAY_COL = 150
+
+function LaneCell({ day, lane, events, campaignById, onAdd, onOpen, onMove, drag }) {
   const key = toKey(day)
   const isToday = key === todayKey()
-  const { over, handlers } = useDropTarget(key, onMove)
+  const { over, handlers } = useDropTarget(key, (id, k) => onMove(id, k, lane))
   return (
-    <div {...handlers} style={{
-      borderRight: `1px solid ${C.border}`, minWidth: 0, display: 'flex', flexDirection: 'column',
-      background: over ? C.mintSoft : C.white,
+    <div {...handlers} className="mkt-cell" onClick={() => onAdd(key, lane.owner)} style={{
+      borderRight: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, minWidth: 0,
+      padding: 7, display: 'flex', flexDirection: 'column', gap: 7, minHeight: 132, cursor: 'pointer',
+      background: over ? C.mintSoft : isToday ? 'rgba(94,212,154,0.06)' : C.white,
     }}>
-      <div style={{ padding: '12px 12px 10px', borderBottom: `1px solid ${C.border}`, background: isToday ? C.mintSoft : C.cream }}>
-        <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: isToday ? C.mintText : C.grayLight }}>
-          {WEEKDAYS[(day.getDay() + 6) % 7]}
-        </div>
-        <div style={{ fontSize: 26, fontWeight: 400, letterSpacing: '-0.6px', marginTop: 2 }}>{day.getDate()}</div>
+      {events.map(ev => (
+        <EventChip key={ev.id} event={ev} campaign={campaignById[ev.campaign_id]} hideOwner={lane.id !== 'other'}
+          onOpen={onOpen} onDragStart={drag.start} onDragEnd={drag.end} />
+      ))}
+      <span className="mkt-add" style={{
+        marginTop: 'auto', fontFamily: MONO, fontSize: 11, color: C.grayLight, textAlign: 'center',
+        border: `1px dashed ${C.border}`, borderRadius: 6, padding: '5px 0',
+      }}>
+        + Add
+      </span>
+    </div>
+  )
+}
+
+function LaneHeader({ lane, count }) {
+  const isOther = lane.id === 'other'
+  const met = count >= WEEKLY_TARGET
+  return (
+    <div style={{
+      position: 'sticky', left: 0, zIndex: 2, background: C.cream,
+      borderRight: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`,
+      padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 5,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ fontSize: 15.5, fontWeight: 500, color: C.dark, flex: 1, minWidth: 0 }}>{lane.name}</div>
+        {!isOther && (
+          <span title={`Target: ${WEEKLY_TARGET} posts this week`} style={{
+            fontFamily: MONO, fontSize: 10.5, fontWeight: 500, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap',
+            background: met ? C.mintSoft : C.bgMed, color: met ? C.mintText : C.grayMid,
+          }}>
+            {count}/{WEEKLY_TARGET}
+          </span>
+        )}
       </div>
-      <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 420 }}>
-        {events.map(ev => (
-          <EventChip key={ev.id} event={ev} campaign={campaignById[ev.campaign_id]}
-            onOpen={onOpen} onDragStart={drag.start} onDragEnd={drag.end} />
-        ))}
-        <button onClick={() => onAdd(key)} style={{
-          marginTop: 'auto', fontFamily: MONO, fontSize: 11.5, color: C.grayLight, background: 'transparent',
-          border: `1px dashed ${C.border}`, borderRadius: 6, padding: '7px 0', cursor: 'pointer',
-        }}>
-          + Add
-        </button>
+      <div style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.mintText }}>
+        {lane.focus}
       </div>
+      <div style={{ fontSize: 12.5, color: C.grayMid, lineHeight: 1.45 }}>{lane.blurb}</div>
     </div>
   )
 }
@@ -547,11 +645,96 @@ function WeekColumn({ day, events, campaignById, onAdd, onOpen, onMove, drag }) 
 function WeekView({ anchor, eventsByDay, ...rest }) {
   const start = startOfWeek(anchor)
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
+  const cols = `${LANE_COL}px repeat(7, minmax(${DAY_COL}px, 1fr))`
+
+  // lane id → day key → events
+  const byLane = {}
+  let anyOther = false
+  days.forEach(d => {
+    const k = toKey(d)
+    ;(eventsByDay[k] || []).forEach(ev => {
+      const lane = laneFor(ev.owner)
+      if (lane.id === 'other') anyOther = true
+      ;((byLane[lane.id] = byLane[lane.id] || {})[k] = byLane[lane.id][k] || []).push(ev)
+    })
+  })
+  const countFor = id => Object.values(byLane[id] || {}).reduce((n, l) => n + l.length, 0)
+
   return (
-    <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', background: C.white, overflowX: 'auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(150px, 1fr))', marginRight: -1 }}>
-        {days.map(d => <WeekColumn key={toKey(d)} day={d} events={eventsByDay[toKey(d)] || []} {...rest} />)}
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, background: C.white, overflowX: 'auto' }}>
+      <style>{`.mkt-cell .mkt-add{opacity:0;transition:opacity .12s}.mkt-cell:hover .mkt-add{opacity:1}`}</style>
+      <div style={{ minWidth: LANE_COL + 7 * DAY_COL, marginRight: -1, marginBottom: -1 }}>
+        {/* day header */}
+        <div style={{ display: 'grid', gridTemplateColumns: cols }}>
+          <div style={{
+            position: 'sticky', left: 0, zIndex: 3, background: C.cream, borderRight: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`,
+            padding: '12px 14px', display: 'flex', alignItems: 'flex-end',
+            fontFamily: MONO, fontSize: 11, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: C.grayLight,
+          }}>
+            Owner · what they own
+          </div>
+          {days.map(d => {
+            const isToday = toKey(d) === todayKey()
+            return (
+              <div key={toKey(d)} style={{ padding: '10px 12px', borderRight: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: isToday ? C.mintSoft : C.cream }}>
+                <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: isToday ? C.mintText : C.grayLight }}>
+                  {WEEKDAYS[(d.getDay() + 6) % 7]}
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.6px', marginTop: 1 }}>{d.getDate()}</div>
+              </div>
+            )
+          })}
+        </div>
+        {/* lanes */}
+        {LANES.map(lane => (
+          <div key={lane.id} style={{ display: 'grid', gridTemplateColumns: cols, opacity: lane.id === 'other' && !anyOther ? 0.85 : 1 }}>
+            <LaneHeader lane={lane} count={countFor(lane.id)} />
+            {days.map(d => (
+              <LaneCell key={toKey(d)} day={d} lane={lane} events={(byLane[lane.id] || {})[toKey(d)] || []} {...rest} />
+            ))}
+          </div>
+        ))}
       </div>
+    </div>
+  )
+}
+
+function IdeasPanel() {
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem('mkt-ideas-open') !== '0' } catch { return true }
+  })
+  const toggle = () => setOpen(o => {
+    try { localStorage.setItem('mkt-ideas-open', o ? '0' : '1') } catch { /* ignore */ }
+    return !o
+  })
+  return (
+    <div style={{ background: C.dark, color: C.white, borderRadius: 10, padding: open ? '18px 22px 22px' : '14px 22px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.mint }}>
+            This week's playbook
+          </p>
+          {open && (
+            <p style={{ fontSize: 17, fontWeight: 400, marginTop: 6, letterSpacing: '-0.2px' }}>
+              Intent to execution. Modeled the way your business runs, changed at the pace it decides.
+            </p>
+          )}
+        </div>
+        <button onClick={toggle} style={btn('transparent', '#BDBDBD', C.darkAlt)}>{open ? 'Hide' : 'Show'}</button>
+      </div>
+      {open && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px 22px', marginTop: 16 }}>
+          {WEEK_IDEAS.map((idea, i) => (
+            <div key={idea.t} style={{ borderTop: `1px solid ${C.darkAlt}`, paddingTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                <span style={{ fontFamily: MONO, fontSize: 11, color: C.mint }}>{pad(i + 1)}</span>
+                <span style={{ fontSize: 14.5, fontWeight: 500 }}>{idea.t}</span>
+              </div>
+              <p style={{ fontSize: 13, color: '#BDBDBD', lineHeight: 1.5, marginTop: 4 }}>{idea.b}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -616,12 +799,19 @@ export default function MarketingCalendarPage() {
 
   const upsertLocal = saved => setEvents(prev => [...prev.filter(e => e.id !== saved.id), saved])
 
-  const moveEvent = useCallback(async (id, dateKey) => {
+  // lane is set when dropped in the week view: moving to another lane re-assigns the owner
+  const moveEvent = useCallback(async (id, dateKey, lane) => {
     const ev = events.find(e => e.id === id)
-    if (!ev || String(ev.event_date).slice(0, 10) === dateKey) return
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, event_date: dateKey } : e))
+    if (!ev) return
+    const patch = {}
+    if (String(ev.event_date).slice(0, 10) !== dateKey) patch.date = dateKey
+    if (lane && laneFor(ev.owner).id !== lane.id) patch.owner = lane.owner
+    if (!Object.keys(patch).length) return
+    setEvents(prev => prev.map(e => e.id !== id ? e : {
+      ...e, ...(patch.date ? { event_date: patch.date } : {}), ...('owner' in patch ? { owner: patch.owner } : {}),
+    }))
     setStatus('saving')
-    try { upsertLocal(await api.marketing.upsertEvent({ id, date: dateKey })); setStatus('saved') }
+    try { upsertLocal(await api.marketing.upsertEvent({ id, ...patch })); setStatus('saved') }
     catch (e) { console.error(e); setStatus('error'); load() }
   }, [events, load])
 
@@ -638,7 +828,7 @@ export default function MarketingCalendarPage() {
 
   const viewProps = {
     anchor, eventsByDay, campaignById,
-    onAdd: key => setModal({ newDate: key }),
+    onAdd: (key, owner) => setModal({ newDate: key, owner: owner || '' }),
     onOpen: id => setModal({ eventId: id }),
     onZoom: key => go('week', key),
     onMove: moveEvent,
@@ -671,7 +861,9 @@ export default function MarketingCalendarPage() {
               What goes out, when, and who owns it.
             </h1>
             <p style={{ fontSize: 16.5, color: C.grayMid, marginTop: 10, maxWidth: 760 }}>
-              Click a day to add an event, click a date number to zoom into its week, drag an event to move it.
+              {view === 'week'
+                ? 'One lane per leader. Click a cell to add an event for that person, drag an event to move it to another day or owner.'
+                : 'Click a day to add an event, click a date number to zoom into its week, drag an event to move it.'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -726,6 +918,7 @@ export default function MarketingCalendarPage() {
           </div>
         )}
 
+        {!loading && !error && view === 'week' && <IdeasPanel />}
         {!loading && !error && (view === 'month' ? <MonthView {...viewProps} /> : <WeekView {...viewProps} />)}
       </div>
 
@@ -735,9 +928,10 @@ export default function MarketingCalendarPage() {
       )}
       {modal && modal !== 'campaigns' && (modal.newDate || openEvent) && (
         <EventModal
-          key={modal.eventId || modal.newDate}
+          key={modal.eventId || `${modal.newDate}:${modal.owner || ''}`}
           event={openEvent}
           defaultDate={modal.newDate}
+          defaultOwner={modal.owner}
           campaigns={campaigns}
           onClose={() => setModal(null)}
           onSaved={upsertLocal}
