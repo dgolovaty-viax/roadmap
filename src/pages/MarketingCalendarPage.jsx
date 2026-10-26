@@ -74,7 +74,7 @@ const LEADERS = [
   {
     id: 'lucas', name: 'Lucas Seidenfus', owner: 'Lucas', match: ['lucas', 'seidenfus'],
     focus: 'Customer wins',
-    blurb: 'Stories from live implementations: sprint demos and milestones with cleared names (2U / edX, Wiley).',
+    blurb: 'Stories from live implementations: sprint demos and milestones that show how fast customers get to production when they build on viax.',
   },
 ]
 const OTHER_LANE = {
